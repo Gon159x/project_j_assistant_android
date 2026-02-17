@@ -3,7 +3,6 @@
     <string name="app_name">Assistant Android</string>
     <string name="title_main">Asistente por Voz</string>
     <string name="speak_button">Hablar</string>
-    <string name="hello_world_button">hola mundo</string>
     <string name="recognized_label">Texto reconocido:</string>
     <string name="response_label">Respuesta del servidor:</string>
     <string name="waiting_speech">Esperando audio...</string>
