@@ -1,0 +1,21 @@
+# Gradle and build output
+.gradle/
+build/
+**/build/
+
+# Android packaged artifacts
+*.apk
+*.aab
+*.ap_
+
+# Local machine configuration
+local.properties
+
+# IDE/OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Optional captures folder
+captures/
