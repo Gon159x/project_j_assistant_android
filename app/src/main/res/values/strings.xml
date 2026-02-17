@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Assistant Android</string>
+    <string name="title_main">Asistente por Voz</string>
+    <string name="speak_button">Hablar</string>
+    <string name="recognized_label">Texto reconocido:</string>
+    <string name="response_label">Respuesta del servidor:</string>
+    <string name="waiting_speech">Esperando audio...</string>
+    <string name="waiting_response">Esperando respuesta...</string>
+</resources>
