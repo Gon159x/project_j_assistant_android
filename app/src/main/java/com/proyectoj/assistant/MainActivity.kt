@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
+    private lateinit var helloWorldButton: Button
     private lateinit var recognizedTextView: TextView
     private lateinit var responseTextView: TextView
     private lateinit var loadingView: ProgressBar
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         speakButton = findViewById(R.id.btnSpeak)
+        helloWorldButton = findViewById(R.id.btnHelloWorld)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
         responseTextView = findViewById(R.id.tvResponseText)
         loadingView = findViewById(R.id.progressBar)
@@ -62,6 +64,12 @@ class MainActivity : AppCompatActivity() {
             } else {
                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
+        }
+
+        helloWorldButton.setOnClickListener {
+            val message = getString(R.string.hello_world_message)
+            responseTextView.text = message
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         }
     }
 
