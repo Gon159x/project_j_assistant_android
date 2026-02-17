@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
         responseTextView = findViewById(R.id.tvResponseText)
         loadingView = findViewById(R.id.progressBar)
 
-        apiClient = ApiClient()
+        apiClient = ApiClient(applicationContext)
         speechHandler = SpeechHandler(this)
         ttsHandler = TtsHandler(this) { ready ->
             isTtsReady = ready

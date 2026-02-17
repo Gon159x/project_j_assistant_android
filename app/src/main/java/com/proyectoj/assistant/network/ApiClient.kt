@@ -1,5 +1,8 @@
 package com.proyectoj.assistant.network
 
+import android.content.Context
+import android.net.wifi.WifiManager
+import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -7,28 +10,53 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
-class ApiClient {
+class ApiClient(private val context: Context) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
+    private val discoveryClient = OkHttpClient.Builder()
+        .connectTimeout(700, TimeUnit.MILLISECONDS)
+        .readTimeout(700, TimeUnit.MILLISECONDS)
+        .writeTimeout(700, TimeUnit.MILLISECONDS)
+        .build()
+
+    @Volatile
+    private var resolvedBaseUrl: String? = null
 
     companion object {
-        // 10.0.2.2 points to host localhost only when running on Android emulator.
-        // On a physical device, replace this with your computer LAN IP, e.g. http://192.168.1.50:8000/chat
-        const val CHAT_URL = "http://192.168.1.2:8000/chat"
+        private const val TAG = "ApiClient"
+        private const val PREFS_NAME = "assistant_network"
+        private const val PREF_KEY_BASE_URL = "server_base_url"
+        private const val DEFAULT_PORT = 8000
+        private const val CHAT_PATH = "/chat"
+        private const val HEALTH_PATH = "/health"
+        private const val EMULATOR_BASE_URL = "http://10.0.2.2:8000"
+        private const val FALLBACK_BASE_URL = "http://192.168.1.2:8000"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
 
     fun postMessage(message: String): Result<String> {
+        return postMessageInternal(message, allowRetryWithRediscovery = true)
+    }
+
+    private fun postMessageInternal(message: String, allowRetryWithRediscovery: Boolean): Result<String> {
+        val chatUrl = resolveChatUrl()
+            ?: return Result.failure(
+                IOException("Could not discover assistant server on local network.")
+            )
+
         return try {
             val requestJson = JSONObject().put("message", message).toString()
             val requestBody = requestJson.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
-                .url(CHAT_URL)
+                .url(chatUrl)
                 .post(requestBody)
                 .build()
 
@@ -49,10 +77,148 @@ class ApiClient {
 
                 Result.success(responseText)
             }
+        } catch (ex: IOException) {
+            if (allowRetryWithRediscovery) {
+                Log.w(TAG, "Request failed against $chatUrl. Clearing cache and retrying discovery.", ex)
+                clearResolvedServer()
+                return postMessageInternal(message, allowRetryWithRediscovery = false)
+            }
+            Result.failure(ex)
         } catch (ex: JSONException) {
             Result.failure(IOException("Invalid JSON format from server.", ex))
-        } catch (ex: IOException) {
-            Result.failure(ex)
         }
+    }
+
+    private fun resolveChatUrl(): String? {
+        val baseUrl = resolvedBaseUrl ?: discoverServerBaseUrl()
+        return baseUrl?.let { "$it$CHAT_PATH" }
+    }
+
+    private fun discoverServerBaseUrl(): String? {
+        val cached = getPersistedBaseUrl()
+        if (!cached.isNullOrBlank() && isServerHealthy(cached)) {
+            resolvedBaseUrl = cached
+            return cached
+        }
+
+        val directCandidates = linkedSetOf<String>()
+        directCandidates.add(EMULATOR_BASE_URL)
+        directCandidates.add(FALLBACK_BASE_URL)
+        subnetPrefix()?.let { prefix ->
+            listOf(2, 10, 11, 20, 50, 100, 101, 110, 120, 150, 200)
+                .forEach { host -> directCandidates.add("http://$prefix.$host:$DEFAULT_PORT") }
+        }
+
+        for (candidate in directCandidates) {
+            if (isServerHealthy(candidate)) {
+                persistResolvedServer(candidate)
+                return candidate
+            }
+        }
+
+        val discoveredInSubnet = discoverInSubnet()
+        if (discoveredInSubnet != null) {
+            persistResolvedServer(discoveredInSubnet)
+            return discoveredInSubnet
+        }
+
+        Log.e(TAG, "Server discovery failed: no healthy /health endpoint found.")
+        return null
+    }
+
+    private fun discoverInSubnet(): String? {
+        val prefix = subnetPrefix() ?: return null
+        val found = AtomicReference<String?>(null)
+        val executor = Executors.newFixedThreadPool(24)
+        try {
+            val tasks = (1..254).map { host ->
+                Callable<String?> {
+                    if (found.get() != null) {
+                        return@Callable null
+                    }
+                    val candidate = "http://$prefix.$host:$DEFAULT_PORT"
+                    if (isServerHealthy(candidate)) {
+                        found.compareAndSet(null, candidate)
+                        return@Callable candidate
+                    }
+                    null
+                }
+            }
+            executor.invokeAll(tasks, 8, TimeUnit.SECONDS)
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } finally {
+            executor.shutdownNow()
+        }
+
+        val result = found.get()
+        if (result != null) {
+            Log.i(TAG, "Discovered server in subnet: $result")
+        }
+        return result
+    }
+
+    private fun isServerHealthy(baseUrl: String): Boolean {
+        val request = Request.Builder()
+            .url("$baseUrl$HEALTH_PATH")
+            .get()
+            .build()
+
+        return try {
+            discoveryClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return false
+                }
+                val body = response.body?.string().orEmpty()
+                JSONObject(body).optString("status") == "ok"
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun subnetPrefix(): String? {
+        return try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                ?: return null
+            val ipAddress = wifiManager.connectionInfo?.ipAddress ?: 0
+            if (ipAddress == 0) {
+                return null
+            }
+            val ip = intToIpv4(ipAddress)
+            val parts = ip.split(".")
+            if (parts.size != 4) {
+                return null
+            }
+            "${parts[0]}.${parts[1]}.${parts[2]}"
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun intToIpv4(ip: Int): String {
+        return "${ip and 0xFF}.${ip shr 8 and 0xFF}.${ip shr 16 and 0xFF}.${ip shr 24 and 0xFF}"
+    }
+
+    private fun persistResolvedServer(baseUrl: String) {
+        resolvedBaseUrl = baseUrl
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_KEY_BASE_URL, baseUrl)
+            .apply()
+        Log.i(TAG, "Using assistant server: $baseUrl")
+    }
+
+    private fun getPersistedBaseUrl(): String? {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_KEY_BASE_URL, null)
+    }
+
+    private fun clearResolvedServer() {
+        resolvedBaseUrl = null
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(PREF_KEY_BASE_URL)
+            .apply()
     }
 }
