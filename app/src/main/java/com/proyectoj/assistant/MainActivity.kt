@@ -6,36 +6,47 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.text.format.Formatter
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.tabs.TabLayout
 import com.proyectoj.assistant.network.ApiClient
+import com.proyectoj.assistant.network.BuildSummary
 import com.proyectoj.assistant.network.UpdateAction
 import com.proyectoj.assistant.network.UpdateInfo
 import com.proyectoj.assistant.network.UpdateInfoParser
 import com.proyectoj.assistant.speech.SpeechHandler
 import com.proyectoj.assistant.speech.TtsHandler
 import java.io.File
+import java.util.ArrayDeque
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var tabLayoutMain: TabLayout
+    private lateinit var assistantTabContent: LinearLayout
+    private lateinit var logsTabContent: LinearLayout
+
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
     private lateinit var checkUpdateButton: Button
@@ -46,10 +57,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var updateProgressView: ProgressBar
     private lateinit var updateProgressTextView: TextView
 
+    private lateinit var buildMonitorStatusView: TextView
+    private lateinit var activeBuildsView: TextView
+    private lateinit var activeBuildsListView: ListView
+    private lateinit var buildLogBranchView: TextView
+    private lateinit var buildLogsView: TextView
+    private lateinit var buildLogsProgressView: ProgressBar
+    private lateinit var refreshBuildLogsButton: MaterialButton
+    private lateinit var activeBuildsAdapter: ArrayAdapter<String>
+
     private lateinit var apiClient: ApiClient
     private lateinit var speechHandler: SpeechHandler
     private lateinit var ttsHandler: TtsHandler
     private lateinit var networkExecutor: ExecutorService
+    private lateinit var buildMonitorExecutor: ExecutorService
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private lateinit var downloadManager: DownloadManager
@@ -57,6 +78,14 @@ class MainActivity : AppCompatActivity() {
     private var currentDownloadedFileName: String? = null
     private var downloadProgressRunnable: Runnable? = null
     private var isTtsReady: Boolean = false
+
+    private var buildPollingEnabled: Boolean = false
+    private var buildPollingInFlight: Boolean = false
+    private var buildPollingRunnable: Runnable? = null
+    private var selectedBuildBranch: String? = null
+    private var latestActiveBuilds: List<BuildSummary> = emptyList()
+    private var buildLogsNextSeq: Int = 0
+    private val buildLogBuffer: ArrayDeque<String> = ArrayDeque()
 
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -85,6 +114,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        tabLayoutMain = findViewById(R.id.tabLayoutMain)
+        assistantTabContent = findViewById(R.id.assistantTabContent)
+        logsTabContent = findViewById(R.id.logsTabContent)
+
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
@@ -95,6 +128,25 @@ class MainActivity : AppCompatActivity() {
         updateProgressView = findViewById(R.id.progressBarUpdate)
         updateProgressTextView = findViewById(R.id.tvUpdateProgress)
 
+        buildMonitorStatusView = findViewById(R.id.tvBuildMonitorStatus)
+        activeBuildsView = findViewById(R.id.tvActiveBuilds)
+        activeBuildsListView = findViewById(R.id.lvActiveBuilds)
+        buildLogBranchView = findViewById(R.id.tvBuildLogBranch)
+        buildLogsView = findViewById(R.id.tvBuildLogs)
+        buildLogsProgressView = findViewById(R.id.progressBarBuildLogs)
+        refreshBuildLogsButton = findViewById(R.id.btnRefreshBuildLogs)
+        activeBuildsAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
+        activeBuildsListView.adapter = activeBuildsAdapter
+        activeBuildsListView.setOnItemClickListener { _, _, position, _ ->
+            val selected = latestActiveBuilds.getOrNull(position) ?: return@setOnItemClickListener
+            if (selected.branch == selectedBuildBranch) {
+                return@setOnItemClickListener
+            }
+            selectedBuildBranch = selected.branch
+            resetBuildLogsState()
+            triggerBuildPollNow()
+        }
+
         apiClient = ApiClient(applicationContext)
         speechHandler = SpeechHandler(this)
         ttsHandler = TtsHandler(this) { ready ->
@@ -102,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             if (!ready) showError("TextToSpeech is not available.")
         }
         networkExecutor = Executors.newSingleThreadExecutor()
+        buildMonitorExecutor = Executors.newSingleThreadExecutor()
         downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
         val downloadCompleteFilter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -109,6 +162,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             registerReceiver(downloadReceiver, downloadCompleteFilter)
         }
+
+        setupTabs()
 
         speakButton.setOnClickListener {
             if (hasAudioPermission()) {
@@ -125,6 +180,216 @@ class MainActivity : AppCompatActivity() {
         sendTextButton.setOnClickListener {
             submitTypedMessage()
         }
+
+        refreshBuildLogsButton.setOnClickListener {
+            resetBuildLogsState()
+            triggerBuildPollNow()
+        }
+    }
+
+    private fun setupTabs() {
+        tabLayoutMain.removeAllTabs()
+        tabLayoutMain.addTab(tabLayoutMain.newTab().setText(getString(R.string.tab_assistant)))
+        tabLayoutMain.addTab(tabLayoutMain.newTab().setText(getString(R.string.tab_codex_logs)))
+        tabLayoutMain.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                selectMainTab(tab.position)
+            }
+
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+
+            override fun onTabReselected(tab: TabLayout.Tab) {
+                if (tab.position == 1) {
+                    triggerBuildPollNow()
+                }
+            }
+        })
+        selectMainTab(0)
+    }
+
+    private fun selectMainTab(position: Int) {
+        val logsSelected = position == 1
+        assistantTabContent.visibility = if (logsSelected) View.GONE else View.VISIBLE
+        logsTabContent.visibility = if (logsSelected) View.VISIBLE else View.GONE
+        if (logsSelected) {
+            startBuildPolling()
+        } else {
+            stopBuildPolling()
+        }
+    }
+
+    private fun startBuildPolling() {
+        if (buildPollingEnabled) {
+            return
+        }
+        buildPollingEnabled = true
+        triggerBuildPollNow()
+    }
+
+    private fun stopBuildPolling() {
+        buildPollingEnabled = false
+        buildPollingRunnable?.let { mainHandler.removeCallbacks(it) }
+        buildPollingRunnable = null
+        buildPollingInFlight = false
+        setBuildLogsLoading(false)
+    }
+
+    private fun triggerBuildPollNow() {
+        if (!buildPollingEnabled) {
+            return
+        }
+        buildPollingRunnable?.let { mainHandler.removeCallbacks(it) }
+        pollBuildStatusOnce()
+    }
+
+    private fun scheduleNextBuildPoll() {
+        if (!buildPollingEnabled) {
+            return
+        }
+        val runnable = Runnable { pollBuildStatusOnce() }
+        buildPollingRunnable = runnable
+        mainHandler.postDelayed(runnable, BUILD_POLL_INTERVAL_MS)
+    }
+
+    private fun pollBuildStatusOnce() {
+        if (!buildPollingEnabled || buildPollingInFlight) {
+            scheduleNextBuildPoll()
+            return
+        }
+
+        buildPollingInFlight = true
+        setBuildLogsLoading(true)
+
+        buildMonitorExecutor.execute {
+            var activeBuilds: List<BuildSummary> = emptyList()
+            var buildBranch: String? = null
+            var buildStatus = ""
+            var newLogs: List<String> = emptyList()
+            var nextSeq = buildLogsNextSeq
+            var errorText: String? = null
+
+            val activeResult = apiClient.fetchActiveBuilds()
+            activeResult.onSuccess { builds ->
+                activeBuilds = builds
+            }.onFailure { error ->
+                errorText = error.message ?: getString(R.string.codex_logs_error_generic)
+            }
+
+            if (errorText == null && activeBuilds.isNotEmpty()) {
+                val branch = chooseBranchToTrack(activeBuilds)
+                buildBranch = branch
+                val logsResult = apiClient.fetchBuildLogs(branch, buildLogsNextSeq)
+                logsResult.onSuccess { chunk ->
+                    buildStatus = chunk.status
+                    newLogs = chunk.logs
+                    nextSeq = chunk.nextSeq
+                }.onFailure { error ->
+                    errorText = error.message ?: getString(R.string.codex_logs_error_generic)
+                }
+            }
+
+            runOnUiThread {
+                buildPollingInFlight = false
+                setBuildLogsLoading(false)
+
+                if (!buildPollingEnabled) {
+                    return@runOnUiThread
+                }
+
+                if (errorText != null) {
+                    buildMonitorStatusView.text = getString(R.string.codex_logs_error_prefix, errorText)
+                    scheduleNextBuildPoll()
+                    return@runOnUiThread
+                }
+
+                renderActiveBuilds(activeBuilds)
+
+                if (activeBuilds.isEmpty()) {
+                    selectedBuildBranch = null
+                    buildMonitorStatusView.text = getString(R.string.codex_logs_no_active_builds)
+                    buildLogBranchView.text = getString(R.string.codex_logs_branch_none)
+                    if (buildLogBuffer.isEmpty()) {
+                        buildLogsView.text = getString(R.string.codex_logs_waiting)
+                    }
+                    scheduleNextBuildPoll()
+                    return@runOnUiThread
+                }
+
+                selectedBuildBranch = buildBranch
+                buildLogsNextSeq = nextSeq
+                appendBuildLogs(newLogs)
+                val trackedBranch = selectedBuildBranch.orEmpty()
+                buildLogBranchView.text = getString(R.string.codex_logs_branch_prefix, trackedBranch)
+                buildMonitorStatusView.text = getString(
+                    R.string.codex_logs_tracking_status,
+                    trackedBranch,
+                    buildStatus.ifBlank { "running" }
+                )
+                scheduleNextBuildPoll()
+            }
+        }
+    }
+
+    private fun chooseBranchToTrack(builds: List<BuildSummary>): String {
+        val selected = selectedBuildBranch
+        if (!selected.isNullOrBlank() && builds.any { it.branch == selected }) {
+            return selected
+        }
+        val first = builds.first().branch
+        if (selected != first) {
+            resetBuildLogsState()
+        }
+        return first
+    }
+
+    private fun renderActiveBuilds(builds: List<BuildSummary>) {
+        latestActiveBuilds = builds
+        if (builds.isEmpty()) {
+            activeBuildsView.text = getString(R.string.codex_logs_no_active_builds)
+            activeBuildsAdapter.clear()
+            return
+        }
+        activeBuildsView.text = getString(R.string.codex_logs_active_builds_count, builds.size)
+        val rows = builds.map { summary ->
+            val marker = if (summary.branch == selectedBuildBranch) "* " else ""
+            "$marker${summary.branch} [${summary.status}]"
+        }
+        activeBuildsAdapter.clear()
+        activeBuildsAdapter.addAll(rows)
+        activeBuildsAdapter.notifyDataSetChanged()
+    }
+
+    private fun resetBuildLogsState() {
+        buildLogsNextSeq = 0
+        buildLogBuffer.clear()
+        buildLogsView.text = getString(R.string.codex_logs_waiting)
+        buildLogBranchView.text = getString(R.string.codex_logs_branch_none)
+    }
+
+    private fun appendBuildLogs(newLogs: List<String>) {
+        if (newLogs.isEmpty()) {
+            if (buildLogBuffer.isEmpty()) {
+                buildLogsView.text = getString(R.string.codex_logs_waiting)
+            }
+            return
+        }
+
+        for (line in newLogs) {
+            if (line.isBlank()) {
+                continue
+            }
+            buildLogBuffer.addLast(line)
+            while (buildLogBuffer.size > MAX_VISIBLE_BUILD_LOG_LINES) {
+                buildLogBuffer.removeFirst()
+            }
+        }
+
+        buildLogsView.text = buildLogBuffer.joinToString("\n")
+    }
+
+    private fun setBuildLogsLoading(loading: Boolean) {
+        buildLogsProgressView.visibility = if (loading) View.VISIBLE else View.GONE
+        refreshBuildLogsButton.isEnabled = !loading
     }
 
     private fun hasAudioPermission(): Boolean {
@@ -405,10 +670,17 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Important cleanup for SpeechRecognizer and TTS lifecycle resources.
+        stopBuildPolling()
         stopDownloadProgressTracking()
         unregisterReceiver(downloadReceiver)
         speechHandler.shutdown()
         ttsHandler.shutdown()
         networkExecutor.shutdown()
+        buildMonitorExecutor.shutdown()
+    }
+
+    companion object {
+        private const val BUILD_POLL_INTERVAL_MS = 2_000L
+        private const val MAX_VISIBLE_BUILD_LOG_LINES = 220
     }
 }

@@ -5,6 +5,7 @@
     <string name="subtitle_main">Habla o escribe para resolver tareas rápido.</string>
     <string name="assistant_controls">Controles del asistente</string>
     <string name="speak_button">Hablar</string>
+    <string name="hello_world_button">hola Mundo</string>
     <string name="message_hint">Escribe tu mensaje</string>
     <string name="send_text_button">Enviar texto</string>
     <string name="check_update_button">Revisar actualización</string>
@@ -26,4 +27,16 @@
     <string name="waiting_speech">Esperando audio...</string>
     <string name="waiting_response">Esperando respuesta...</string>
     <string name="empty_message_error">Escribe un mensaje antes de enviar.</string>
+    <string name="tab_assistant">Asistente</string>
+    <string name="tab_codex_logs">Codex Logs</string>
+    <string name="codex_logs_title">Monitor de builds Codex</string>
+    <string name="codex_logs_waiting">Esperando logs...</string>
+    <string name="codex_logs_refresh">Actualizar logs</string>
+    <string name="codex_logs_error_generic">No se pudieron obtener logs de build.</string>
+    <string name="codex_logs_error_prefix">Error: %1$s</string>
+    <string name="codex_logs_no_active_builds">No hay builds activos.</string>
+    <string name="codex_logs_active_builds_count">Builds activos: %1$d</string>
+    <string name="codex_logs_branch_none">Build seleccionado: ninguno</string>
+    <string name="codex_logs_branch_prefix">Build seleccionado: %1$s</string>
+    <string name="codex_logs_tracking_status">Siguiendo %1$s [%2$s]</string>
 </resources>

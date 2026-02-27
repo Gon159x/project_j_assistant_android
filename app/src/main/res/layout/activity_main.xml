@@ -15,203 +15,341 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.google.android.material.card.MaterialCardView
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tabLayoutMain"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacer_m"
-            app:cardBackgroundColor="@color/colorPrimary"
-            app:cardCornerRadius="@dimen/corner_radius_l"
-            app:cardElevation="0dp">
+            app:tabIndicatorColor="@color/colorPrimary"
+            app:tabIndicatorFullWidth="false"
+            app:tabMode="fixed"
+            app:tabRippleColor="@android:color/transparent"
+            app:tabSelectedTextColor="@color/colorOnSurface"
+            app:tabTextColor="@color/labelMuted" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacer_l">
-
-                <TextView
-                    android:id="@+id/tvTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/title_main"
-                    android:textColor="@color/colorOnPrimary"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:text="@string/subtitle_main"
-                    android:textColor="@color/colorOnPrimary"
-                    android:textSize="14sp"
-                    android:alpha="0.85" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
+        <LinearLayout
+            android:id="@+id/assistantTabContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/spacer_m"
-            app:cardBackgroundColor="@color/cardBackground"
-            app:cardCornerRadius="@dimen/corner_radius_l"
-            app:cardElevation="2dp">
+            android:orientation="vertical">
 
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacer_m">
+                android:layout_marginBottom="@dimen/spacer_m"
+                app:cardBackgroundColor="@color/colorPrimary"
+                app:cardCornerRadius="@dimen/corner_radius_l"
+                app:cardElevation="0dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/assistant_controls"
-                    android:textColor="@color/labelMuted"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_l">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSpeak"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:text="@string/speak_button"
-                    app:cornerRadius="14dp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_m">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etMessageInput"
+                    <TextView
+                        android:id="@+id/tvTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/message_hint"
-                        android:imeOptions="actionSend"
-                        android:inputType="textCapSentences|textMultiLine"
-                        android:maxLines="3"
-                        android:minHeight="52dp"
+                        android:text="@string/title_main"
+                        android:textColor="@color/colorOnPrimary"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/subtitle_main"
+                        android:textColor="@color/colorOnPrimary"
+                        android:textSize="14sp"
+                        android:alpha="0.85" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacer_m"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_l"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_controls"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSpeak"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/speak_button"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHolaMundo"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/hello_world_button"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_m">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etMessageInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/message_hint"
+                            android:imeOptions="actionSend"
+                            android:inputType="textCapSentences|textMultiLine"
+                            android:maxLines="3"
+                            android:minHeight="52dp"
+                            android:textColor="@color/colorOnSurface"
+                            android:textSize="15sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSendText"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_m"
+                        android:text="@string/send_text_button"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCheckUpdate"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/check_update_button"
+                        app:cornerRadius="14dp" />
+
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="@dimen/spacer_m"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvUpdateProgress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        tools:text="Descargando actualizacion: 47% (12 MB / 25 MB)" />
+
+                    <ProgressBar
+                        android:id="@+id/progressBarUpdate"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:indeterminate="true"
+                        android:max="100"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacer_m"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_m"
+                app:cardElevation="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:id="@+id/tvRecognizedLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/recognized_label"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRecognizedText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/waiting_speech"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_m"
+                app:cardElevation="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:id="@+id/tvResponseLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/response_label"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvResponseText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/waiting_response"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/logsTabContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacer_m"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_l"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/codex_logs_title"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvBuildMonitorStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/codex_logs_waiting"
                         android:textColor="@color/colorOnSurface"
                         android:textSize="15sp" />
-                </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSendText"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_m"
-                    android:text="@string/send_text_button"
-                    app:cornerRadius="14dp" />
+                    <TextView
+                        android:id="@+id/tvActiveBuilds"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/codex_logs_no_active_builds"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnCheckUpdate"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:text="@string/check_update_button"
-                    app:cornerRadius="14dp" />
+                    <ListView
+                        android:id="@+id/lvActiveBuilds"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:dividerHeight="0dp"
+                        android:listSelector="@android:color/transparent"
+                        tools:listitem="@android:layout/simple_list_item_1" />
 
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="@dimen/spacer_m"
-                    android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRefreshBuildLogs"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_m"
+                        android:text="@string/codex_logs_refresh"
+                        app:cornerRadius="14dp" />
 
-                <TextView
-                    android:id="@+id/tvUpdateProgress"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:textColor="@color/labelMuted"
-                    android:textSize="13sp"
-                    android:visibility="gone"
-                    tools:text="Descargando actualización: 47% (12 MB / 25 MB)" />
+                    <ProgressBar
+                        android:id="@+id/progressBarBuildLogs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-                <ProgressBar
-                    android:id="@+id/progressBarUpdate"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:indeterminate="true"
-                    android:max="100"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/spacer_m"
-            app:cardBackgroundColor="@color/cardBackground"
-            app:cardCornerRadius="@dimen/corner_radius_m"
-            app:cardElevation="1dp">
-
-            <LinearLayout
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacer_m">
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_m"
+                app:cardElevation="1dp">
 
-                <TextView
-                    android:id="@+id/tvRecognizedLabel"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/recognized_label"
-                    android:textColor="@color/labelMuted"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
 
-                <TextView
-                    android:id="@+id/tvRecognizedText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:text="@string/waiting_speech"
-                    android:textColor="@color/colorOnSurface"
-                    android:textSize="16sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:id="@+id/tvBuildLogBranch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/codex_logs_branch_none"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/cardBackground"
-            app:cardCornerRadius="@dimen/corner_radius_m"
-            app:cardElevation="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/spacer_m">
-
-                <TextView
-                    android:id="@+id/tvResponseLabel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/response_label"
-                    android:textColor="@color/labelMuted"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvResponseText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacer_s"
-                    android:text="@string/waiting_response"
-                    android:textColor="@color/colorOnSurface"
-                    android:textSize="16sp" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:id="@+id/tvBuildLogs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:fontFamily="monospace"
+                        android:text="@string/codex_logs_waiting"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

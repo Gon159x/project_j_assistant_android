@@ -1,6 +1,7 @@
 package com.proyectoj.assistant.network
 
 import android.content.Context
+import android.net.Uri
 import android.net.wifi.WifiManager
 import android.util.Log
 import com.proyectoj.assistant.BuildConfig
@@ -15,6 +16,21 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+
+data class BuildSummary(
+    val branch: String,
+    val status: String,
+    val message: String,
+    val updatedAt: String,
+    val logCount: Int
+)
+
+data class BuildLogsChunk(
+    val branch: String,
+    val status: String,
+    val nextSeq: Int,
+    val logs: List<String>
+)
 
 class ApiClient(private val context: Context) {
     private val client = OkHttpClient.Builder()
@@ -39,6 +55,7 @@ class ApiClient(private val context: Context) {
         private const val CHAT_PATH = "/chat"
         private const val HEALTH_PATH = "/health"
         private const val UPDATE_LATEST_PATH = "/mobile/update/latest"
+        private const val ACTIVE_BUILDS_PATH = "/builds/active"
         private const val EMULATOR_BASE_URL = "http://10.0.2.2:8000"
         private const val FALLBACK_BASE_URL = "http://192.168.1.2:8000"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
@@ -118,6 +135,55 @@ class ApiClient(private val context: Context) {
             }
         } catch (ex: IOException) {
             Result.failure(ex)
+        }
+    }
+
+    fun fetchActiveBuilds(): Result<List<BuildSummary>> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for build logs."))
+        val request = Request.Builder()
+            .url("$baseUrl$ACTIVE_BUILDS_PATH")
+            .get()
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                }
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) {
+                    return Result.success(emptyList())
+                }
+                parseBuildSummaries(body)
+            }
+        } catch (ex: Exception) {
+            Result.failure(IOException("Could not fetch active builds.", ex))
+        }
+    }
+
+    fun fetchBuildLogs(branch: String, fromSeq: Int): Result<BuildLogsChunk> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for build logs."))
+        val encodedBranch = Uri.encode(branch)
+        val request = Request.Builder()
+            .url("$baseUrl/build/$encodedBranch/logs?from_seq=$fromSeq")
+            .get()
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                }
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) {
+                    return Result.failure(IOException("Server returned an empty build logs body."))
+                }
+                parseBuildLogsChunk(body)
+            }
+        } catch (ex: Exception) {
+            Result.failure(IOException("Could not fetch build logs.", ex))
         }
     }
 
@@ -270,5 +336,53 @@ class ApiClient(private val context: Context) {
             .edit()
             .remove(PREF_KEY_BASE_URL)
             .apply()
+    }
+
+    private fun parseBuildSummaries(rawBody: String): Result<List<BuildSummary>> {
+        return try {
+            val root = JSONObject(rawBody)
+            val buildsArray = root.optJSONArray("builds")
+            val summaries = mutableListOf<BuildSummary>()
+            if (buildsArray != null) {
+                for (index in 0 until buildsArray.length()) {
+                    val item = buildsArray.optJSONObject(index) ?: continue
+                    summaries.add(
+                        BuildSummary(
+                            branch = item.optString("branch", ""),
+                            status = item.optString("status", ""),
+                            message = item.optString("message", ""),
+                            updatedAt = item.optString("updated_at", ""),
+                            logCount = item.optInt("log_count", 0)
+                        )
+                    )
+                }
+            }
+            Result.success(summaries)
+        } catch (ex: JSONException) {
+            Result.failure(IOException("Invalid JSON format from build list endpoint.", ex))
+        }
+    }
+
+    private fun parseBuildLogsChunk(rawBody: String): Result<BuildLogsChunk> {
+        return try {
+            val root = JSONObject(rawBody)
+            val logsArray = root.optJSONArray("logs")
+            val logs = mutableListOf<String>()
+            if (logsArray != null) {
+                for (index in 0 until logsArray.length()) {
+                    logs.add(logsArray.optString(index, ""))
+                }
+            }
+            Result.success(
+                BuildLogsChunk(
+                    branch = root.optString("branch", ""),
+                    status = root.optString("status", ""),
+                    nextSeq = root.optInt("next_seq", 0),
+                    logs = logs.filter { it.isNotBlank() }
+                )
+            )
+        } catch (ex: JSONException) {
+            Result.failure(IOException("Invalid JSON format from build logs endpoint.", ex))
+        }
     }
 }
