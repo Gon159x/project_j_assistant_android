@@ -1,8 +1,17 @@
 package com.proyectoj.assistant
 
 import android.Manifest
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
+import android.os.Build
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
@@ -10,15 +19,22 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
 import com.proyectoj.assistant.network.ApiClient
+import com.proyectoj.assistant.network.UpdateAction
+import com.proyectoj.assistant.network.UpdateInfo
+import com.proyectoj.assistant.network.UpdateInfoParser
 import com.proyectoj.assistant.speech.SpeechHandler
 import com.proyectoj.assistant.speech.TtsHandler
+import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
+    private lateinit var helloWorldButton: Button
+    private lateinit var checkUpdateButton: Button
     private lateinit var recognizedTextView: TextView
     private lateinit var responseTextView: TextView
     private lateinit var loadingView: ProgressBar
@@ -28,7 +44,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ttsHandler: TtsHandler
     private lateinit var networkExecutor: ExecutorService
 
+    private lateinit var downloadManager: DownloadManager
+    private var currentDownloadId: Long? = null
+    private var currentDownloadedFileName: String? = null
     private var isTtsReady: Boolean = false
+
+    private val downloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
+                return
+            }
+            val completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            val expectedId = currentDownloadId ?: return
+            if (completedId != expectedId) {
+                return
+            }
+            handleDownloadedApk(expectedId)
+        }
+    }
 
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -44,6 +77,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         speakButton = findViewById(R.id.btnSpeak)
+        helloWorldButton = findViewById(R.id.btnHelloWorld)
+        checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
         responseTextView = findViewById(R.id.tvResponseText)
         loadingView = findViewById(R.id.progressBar)
@@ -55,6 +90,8 @@ class MainActivity : AppCompatActivity() {
             if (!ready) showError("TextToSpeech is not available.")
         }
         networkExecutor = Executors.newSingleThreadExecutor()
+        downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
 
         speakButton.setOnClickListener {
             if (hasAudioPermission()) {
@@ -62,6 +99,16 @@ class MainActivity : AppCompatActivity() {
             } else {
                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
+        }
+
+        helloWorldButton.setOnClickListener {
+            val message = getString(R.string.hello_world_message)
+            responseTextView.text = message
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+
+        checkUpdateButton.setOnClickListener {
+            checkForUpdates()
         }
     }
 
@@ -111,9 +158,101 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkForUpdates() {
+        setLoading(true)
+        responseTextView.text = getString(R.string.update_checking)
+        networkExecutor.execute {
+            val result = apiClient.fetchLatestUpdateInfo()
+            runOnUiThread {
+                setLoading(false)
+                result.onSuccess { update ->
+                    when (UpdateInfoParser.decideUpdateAction(BuildConfig.VERSION_CODE, update)) {
+                        UpdateAction.NO_UPDATE -> showInfo(getString(R.string.update_not_available))
+                        UpdateAction.DOWNLOAD_UPDATE -> startUpdateDownload(update)
+                    }
+                }.onFailure { error ->
+                    showError(error.message ?: getString(R.string.update_download_failed))
+                }
+            }
+        }
+    }
+
+    private fun startUpdateDownload(update: UpdateInfo) {
+        val fileName = "assistant-${update.versionName}-${update.versionCode}.apk"
+        currentDownloadedFileName = fileName
+        val request = DownloadManager.Request(Uri.parse(update.apkUrl))
+            .setTitle(getString(R.string.app_name))
+            .setDescription(getString(R.string.update_download_description))
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, fileName)
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(true)
+
+        currentDownloadId = downloadManager.enqueue(request)
+        showInfo(getString(R.string.update_available, update.versionName, update.versionCode))
+        Toast.makeText(this, getString(R.string.update_download_started), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun handleDownloadedApk(downloadId: Long) {
+        val query = DownloadManager.Query().setFilterById(downloadId)
+        downloadManager.query(query)?.use { cursor ->
+            if (!cursor.moveToFirst()) {
+                showError(getString(R.string.update_download_failed))
+                return
+            }
+            val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            if (status != DownloadManager.STATUS_SUCCESSFUL) {
+                showError(getString(R.string.update_download_failed))
+                return
+            }
+        }
+
+        val fileName = currentDownloadedFileName ?: run {
+            showError(getString(R.string.update_download_failed))
+            return
+        }
+        val apkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+        if (!apkFile.exists()) {
+            showError(getString(R.string.update_download_failed))
+            return
+        }
+        installApk(apkFile)
+    }
+
+    private fun installApk(apkFile: File) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
+            showError(getString(R.string.update_unknown_sources_required))
+            return
+        }
+
+        val apkUri = FileProvider.getUriForFile(
+            this,
+            "${BuildConfig.APPLICATION_ID}.fileprovider",
+            apkFile
+        )
+
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            startActivity(installIntent)
+        } catch (_: Exception) {
+            showError(getString(R.string.update_install_failed))
+        }
+    }
+
     private fun setLoading(loading: Boolean) {
         loadingView.visibility = if (loading) View.VISIBLE else View.GONE
         speakButton.isEnabled = !loading
+        checkUpdateButton.isEnabled = !loading
     }
 
     private fun showError(message: String) {
@@ -121,9 +260,15 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
+    private fun showInfo(message: String) {
+        responseTextView.text = message
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         // Important cleanup for SpeechRecognizer and TTS lifecycle resources.
+        unregisterReceiver(downloadReceiver)
         speechHandler.shutdown()
         ttsHandler.shutdown()
         networkExecutor.shutdown()

@@ -3,6 +3,7 @@ package com.proyectoj.assistant.network
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.util.Log
+import com.proyectoj.assistant.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,6 +38,7 @@ class ApiClient(private val context: Context) {
         private const val DEFAULT_PORT = 8000
         private const val CHAT_PATH = "/chat"
         private const val HEALTH_PATH = "/health"
+        private const val UPDATE_LATEST_PATH = "/mobile/update/latest"
         private const val EMULATOR_BASE_URL = "http://10.0.2.2:8000"
         private const val FALLBACK_BASE_URL = "http://192.168.1.2:8000"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
@@ -90,13 +92,48 @@ class ApiClient(private val context: Context) {
     }
 
     private fun resolveChatUrl(): String? {
-        val baseUrl = resolvedBaseUrl ?: discoverServerBaseUrl()
+        val baseUrl = resolveBaseUrl()
         return baseUrl?.let { "$it$CHAT_PATH" }
     }
 
+    fun fetchLatestUpdateInfo(): Result<UpdateInfo> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for update checks."))
+
+        val request = Request.Builder()
+            .url("$baseUrl$UPDATE_LATEST_PATH")
+            .get()
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                }
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) {
+                    return Result.failure(IOException("Server returned an empty OTA response body."))
+                }
+                UpdateInfoParser.parseLatestResponse(body)
+            }
+        } catch (ex: IOException) {
+            Result.failure(ex)
+        }
+    }
+
+    private fun resolveBaseUrl(): String? {
+        return resolvedBaseUrl ?: discoverServerBaseUrl()
+    }
+
     private fun discoverServerBaseUrl(): String? {
+        val publicCandidate = normalizePublicBaseUrl(BuildConfig.CLOUDFLARE_PUBLIC_BASE_URL)
+        if (!publicCandidate.isNullOrBlank() && isServerHealthy(publicCandidate, useFastClient = false)) {
+            persistResolvedServer(publicCandidate)
+            return publicCandidate
+        }
+
         val cached = getPersistedBaseUrl()
-        if (!cached.isNullOrBlank() && isServerHealthy(cached)) {
+        if (!cached.isNullOrBlank() && isServerHealthy(cached, useFastClient = true)) {
             resolvedBaseUrl = cached
             return cached
         }
@@ -110,7 +147,7 @@ class ApiClient(private val context: Context) {
         }
 
         for (candidate in directCandidates) {
-            if (isServerHealthy(candidate)) {
+            if (isServerHealthy(candidate, useFastClient = true)) {
                 persistResolvedServer(candidate)
                 return candidate
             }
@@ -137,7 +174,7 @@ class ApiClient(private val context: Context) {
                         return@Callable null
                     }
                     val candidate = "http://$prefix.$host:$DEFAULT_PORT"
-                    if (isServerHealthy(candidate)) {
+                    if (isServerHealthy(candidate, useFastClient = true)) {
                         found.compareAndSet(null, candidate)
                         return@Callable candidate
                     }
@@ -158,14 +195,15 @@ class ApiClient(private val context: Context) {
         return result
     }
 
-    private fun isServerHealthy(baseUrl: String): Boolean {
+    private fun isServerHealthy(baseUrl: String, useFastClient: Boolean): Boolean {
         val request = Request.Builder()
             .url("$baseUrl$HEALTH_PATH")
             .get()
             .build()
 
         return try {
-            discoveryClient.newCall(request).execute().use { response ->
+            val activeClient = if (useFastClient) discoveryClient else client
+            activeClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     return false
                 }
@@ -174,6 +212,18 @@ class ApiClient(private val context: Context) {
             }
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private fun normalizePublicBaseUrl(rawUrl: String): String? {
+        val trimmed = rawUrl.trim().trimEnd('/')
+        if (trimmed.isBlank()) {
+            return null
+        }
+        return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            trimmed
+        } else {
+            "https://$trimmed"
         }
     }
 
