@@ -8,7 +8,6 @@
     <string name="message_hint">Escribe tu mensaje</string>
     <string name="send_text_button">Enviar texto</string>
     <string name="check_update_button">Revisar actualización</string>
-    <string name="hola_mundo_button">hola Mundo</string>
     <string name="update_checking">Revisando actualización...</string>
     <string name="update_not_available">No hay actualizaciones disponibles.</string>
     <string name="update_available">Nueva versión disponible: %1$s (%2$d). Descargando...</string>
