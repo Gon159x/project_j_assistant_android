@@ -4,7 +4,16 @@
     <string name="title_main">Asistente por Voz</string>
     <string name="speak_button">Hablar</string>
     <string name="hello_world_button">Hello world</string>
+    <string name="check_update_button">Revisar actualización</string>
     <string name="hello_world_message">Hello world</string>
+    <string name="update_checking">Revisando actualización...</string>
+    <string name="update_not_available">No hay actualizaciones disponibles.</string>
+    <string name="update_available">Nueva versión disponible: %1$s (%2$d). Descargando...</string>
+    <string name="update_download_started">Descarga de actualización iniciada.</string>
+    <string name="update_download_failed">No se pudo descargar la actualización.</string>
+    <string name="update_install_failed">No se pudo iniciar la instalación del APK.</string>
+    <string name="update_unknown_sources_required">Permite instalar apps desconocidas para continuar la actualización.</string>
+    <string name="update_download_description">Descarga OTA de Assistant Android</string>
     <string name="recognized_label">Texto reconocido:</string>
     <string name="response_label">Respuesta del servidor:</string>
     <string name="waiting_speech">Esperando audio...</string>
