@@ -6,6 +6,10 @@
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
         <item name="colorSecondary">@color/colorSecondary</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="android:windowBackground">@drawable/bg_main_gradient</item>
         <item name="android:statusBarColor" tools:targetApi="l">@color/colorPrimaryVariant</item>
+        <item name="android:navigationBarColor" tools:targetApi="o_mr1">@color/screenBackgroundEnd</item>
     </style>
 </resources>

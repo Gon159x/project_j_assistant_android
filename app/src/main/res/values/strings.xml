@@ -2,10 +2,12 @@
 <resources>
     <string name="app_name">Assistant Android</string>
     <string name="title_main">Asistente por Voz</string>
+    <string name="subtitle_main">Habla o escribe para resolver tareas rápido.</string>
+    <string name="assistant_controls">Controles del asistente</string>
     <string name="speak_button">Hablar</string>
-    <string name="hello_world_button">Hello world</string>
+    <string name="message_hint">Escribe tu mensaje</string>
+    <string name="send_text_button">Enviar texto</string>
     <string name="check_update_button">Revisar actualización</string>
-    <string name="hello_world_message">Hello world</string>
     <string name="update_checking">Revisando actualización...</string>
     <string name="update_not_available">No hay actualizaciones disponibles.</string>
     <string name="update_available">Nueva versión disponible: %1$s (%2$d). Descargando...</string>
@@ -18,4 +20,5 @@
     <string name="response_label">Respuesta del servidor:</string>
     <string name="waiting_speech">Esperando audio...</string>
     <string name="waiting_response">Esperando respuesta...</string>
+    <string name="empty_message_error">Escribe un mensaje antes de enviar.</string>
 </resources>
