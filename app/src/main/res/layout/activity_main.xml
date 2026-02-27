@@ -331,11 +331,23 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/tvBuildLogsSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/codex_logs_summary_empty"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="12sp" />
+
+                    <TextView
                         android:id="@+id/tvBuildLogs"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="@dimen/spacer_s"
+                        android:background="@color/logPanelBackground"
                         android:fontFamily="monospace"
+                        android:lineSpacingExtra="3dp"
+                        android:padding="@dimen/spacer_s"
                         android:text="@string/codex_logs_waiting"
                         android:textColor="@color/colorOnSurface"
                         android:textSize="13sp" />

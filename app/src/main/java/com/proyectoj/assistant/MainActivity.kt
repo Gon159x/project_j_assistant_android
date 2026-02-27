@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var activeBuildsView: TextView
     private lateinit var activeBuildsListView: ListView
     private lateinit var buildLogBranchView: TextView
+    private lateinit var buildLogsSummaryView: TextView
     private lateinit var buildLogsView: TextView
     private lateinit var buildLogsProgressView: ProgressBar
     private lateinit var refreshBuildLogsButton: MaterialButton
@@ -132,6 +133,7 @@ class MainActivity : AppCompatActivity() {
         activeBuildsView = findViewById(R.id.tvActiveBuilds)
         activeBuildsListView = findViewById(R.id.lvActiveBuilds)
         buildLogBranchView = findViewById(R.id.tvBuildLogBranch)
+        buildLogsSummaryView = findViewById(R.id.tvBuildLogsSummary)
         buildLogsView = findViewById(R.id.tvBuildLogs)
         buildLogsProgressView = findViewById(R.id.progressBarBuildLogs)
         refreshBuildLogsButton = findViewById(R.id.btnRefreshBuildLogs)
@@ -363,6 +365,7 @@ class MainActivity : AppCompatActivity() {
         buildLogsNextSeq = 0
         buildLogBuffer.clear()
         buildLogsView.text = getString(R.string.codex_logs_waiting)
+        buildLogsSummaryView.text = getString(R.string.codex_logs_summary_empty)
         buildLogBranchView.text = getString(R.string.codex_logs_branch_none)
     }
 
@@ -370,12 +373,14 @@ class MainActivity : AppCompatActivity() {
         if (newLogs.isEmpty()) {
             if (buildLogBuffer.isEmpty()) {
                 buildLogsView.text = getString(R.string.codex_logs_waiting)
+                buildLogsSummaryView.text = getString(R.string.codex_logs_summary_empty)
             }
             return
         }
 
-        for (line in newLogs) {
-            if (line.isBlank()) {
+        for (rawLine in newLogs) {
+            val line = formatBuildLogLine(rawLine) ?: continue
+            if (buildLogBuffer.peekLast() == line) {
                 continue
             }
             buildLogBuffer.addLast(line)
@@ -384,7 +389,66 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        buildLogsView.text = buildLogBuffer.joinToString("\n")
+        val orderedLines = buildLogBuffer.toList().asReversed()
+        buildLogsView.text = orderedLines.joinToString("\n")
+        renderBuildLogsSummary(orderedLines)
+    }
+
+    private fun renderBuildLogsSummary(lines: List<String>) {
+        if (lines.isEmpty()) {
+            buildLogsSummaryView.text = getString(R.string.codex_logs_summary_empty)
+            return
+        }
+        var errors = 0
+        var warnings = 0
+        var ok = 0
+        for (line in lines) {
+            when {
+                line.startsWith("[ERROR]") -> errors += 1
+                line.startsWith("[WARN]") -> warnings += 1
+                line.startsWith("[OK]") -> ok += 1
+            }
+        }
+        buildLogsSummaryView.text = getString(
+            R.string.codex_logs_summary_format,
+            lines.size,
+            errors,
+            warnings,
+            ok
+        )
+    }
+
+    private fun formatBuildLogLine(rawLine: String): String? {
+        var clean = ANSI_ESCAPE_REGEX.replace(rawLine, "").trim()
+        if (clean.isBlank()) {
+            return null
+        }
+        clean = LEADING_TIMESTAMP_REGEX.replace(clean, "").trim()
+        clean = LEADING_NOISE_REGEX.replace(clean, "").trim()
+        clean = PATH_REGEX.replace(clean, "<path>")
+        clean = URL_REGEX.replace(clean, "<url>")
+        clean = SHA_REGEX.replace(clean, "<sha>")
+        clean = MULTISPACE_REGEX.replace(clean, " ").trim()
+        if (clean.isBlank()) {
+            return null
+        }
+
+        val shortened = if (clean.length > MAX_LOG_MESSAGE_LENGTH) {
+            clean.take(MAX_LOG_MESSAGE_LENGTH - 3) + "..."
+        } else {
+            clean
+        }
+        return "[${classifyLogLevel(clean)}] $shortened"
+    }
+
+    private fun classifyLogLevel(line: String): String {
+        val value = line.lowercase()
+        return when {
+            value.contains("error") || value.contains("failed") || value.contains("exception") -> "ERROR"
+            value.contains("warn") || value.contains("retry") || value.contains("timeout") -> "WARN"
+            value.contains("success") || value.contains("completed") || value.contains("done") || value.contains("passed") -> "OK"
+            else -> "INFO"
+        }
     }
 
     private fun setBuildLogsLoading(loading: Boolean) {
@@ -681,6 +745,14 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val BUILD_POLL_INTERVAL_MS = 2_000L
-        private const val MAX_VISIBLE_BUILD_LOG_LINES = 220
+        private const val MAX_VISIBLE_BUILD_LOG_LINES = 80
+        private const val MAX_LOG_MESSAGE_LENGTH = 120
+        private val ANSI_ESCAPE_REGEX = Regex("\\u001B\\[[;\\d]*m")
+        private val LEADING_TIMESTAMP_REGEX = Regex("^\\[?\\d{4}-\\d{2}-\\d{2}[ T]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d+)?Z?\\]?\\s*")
+        private val LEADING_NOISE_REGEX = Regex("^(?:\\[[A-Z]+\\]|[A-Z]+:|\\d+\\s*\\|)\\s*")
+        private val PATH_REGEX = Regex("([A-Za-z]:\\\\[^\\s]+|/[^\\s]+)")
+        private val URL_REGEX = Regex("https?://\\S+")
+        private val SHA_REGEX = Regex("\\b[a-f0-9]{7,40}\\b", RegexOption.IGNORE_CASE)
+        private val MULTISPACE_REGEX = Regex("\\s+")
     }
 }

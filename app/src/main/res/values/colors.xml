@@ -10,5 +10,6 @@
     <color name="screenBackgroundStart">#EAF2FF</color>
     <color name="screenBackgroundEnd">#F8FBFF</color>
     <color name="cardBackground">#FFFFFFFF</color>
+    <color name="logPanelBackground">#F3F7FD</color>
     <color name="labelMuted">#5C6F86</color>
 </resources>

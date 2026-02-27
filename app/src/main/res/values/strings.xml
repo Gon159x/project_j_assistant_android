@@ -38,4 +38,6 @@
     <string name="codex_logs_branch_none">Build seleccionado: ninguno</string>
     <string name="codex_logs_branch_prefix">Build seleccionado: %1$s</string>
     <string name="codex_logs_tracking_status">Siguiendo %1$s [%2$s]</string>
+    <string name="codex_logs_summary_empty">Sin eventos recientes.</string>
+    <string name="codex_logs_summary_format">Eventos: %1$d   Error: %2$d   Warn: %3$d   OK: %4$d</string>
 </resources>
