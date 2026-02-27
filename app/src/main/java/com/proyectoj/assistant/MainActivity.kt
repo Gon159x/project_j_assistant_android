@@ -14,6 +14,7 @@ import android.os.Environment
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -33,8 +34,9 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
-    private lateinit var helloWorldButton: Button
+    private lateinit var sendTextButton: Button
     private lateinit var checkUpdateButton: Button
+    private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
     private lateinit var responseTextView: TextView
     private lateinit var loadingView: ProgressBar
@@ -77,8 +79,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         speakButton = findViewById(R.id.btnSpeak)
-        helloWorldButton = findViewById(R.id.btnHelloWorld)
+        sendTextButton = findViewById(R.id.btnSendText)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
+        messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
         responseTextView = findViewById(R.id.tvResponseText)
         loadingView = findViewById(R.id.progressBar)
@@ -91,7 +94,12 @@ class MainActivity : AppCompatActivity() {
         }
         networkExecutor = Executors.newSingleThreadExecutor()
         downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        val downloadCompleteFilter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver, downloadCompleteFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(downloadReceiver, downloadCompleteFilter)
+        }
 
         speakButton.setOnClickListener {
             if (hasAudioPermission()) {
@@ -101,14 +109,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        helloWorldButton.setOnClickListener {
-            val message = getString(R.string.hello_world_message)
-            responseTextView.text = message
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-        }
-
         checkUpdateButton.setOnClickListener {
             checkForUpdates()
+        }
+
+        sendTextButton.setOnClickListener {
+            submitTypedMessage()
         }
     }
 
@@ -156,6 +162,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun submitTypedMessage() {
+        val message = messageInput.text.toString().trim()
+        if (message.isBlank()) {
+            showError(getString(R.string.empty_message_error))
+            return
+        }
+        recognizedTextView.text = message
+        setLoading(true)
+        sendToServer(message)
     }
 
     private fun checkForUpdates() {
@@ -252,7 +269,9 @@ class MainActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         loadingView.visibility = if (loading) View.VISIBLE else View.GONE
         speakButton.isEnabled = !loading
+        sendTextButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
+        messageInput.isEnabled = !loading
     }
 
     private fun showError(message: String) {

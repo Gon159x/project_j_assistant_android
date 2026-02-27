@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="screen_padding">20dp</dimen>
+    <dimen name="screen_padding">18dp</dimen>
     <dimen name="spacer_s">8dp</dimen>
     <dimen name="spacer_m">16dp</dimen>
     <dimen name="spacer_l">24dp</dimen>
+    <dimen name="corner_radius_l">22dp</dimen>
+    <dimen name="corner_radius_m">16dp</dimen>
 </resources>

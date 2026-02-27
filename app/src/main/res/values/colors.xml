@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#1565C0</color>
-    <color name="colorPrimaryVariant">#0D47A1</color>
+    <color name="colorPrimary">#0F5CC7</color>
+    <color name="colorPrimaryVariant">#0A3A86</color>
     <color name="colorOnPrimary">#FFFFFF</color>
-    <color name="colorSecondary">#2E7D32</color>
+    <color name="colorSecondary">#0D9488</color>
     <color name="colorOnSecondary">#FFFFFF</color>
     <color name="colorSurface">#FFFFFF</color>
-    <color name="colorOnSurface">#1C1B1F</color>
+    <color name="colorOnSurface">#132238</color>
+    <color name="screenBackgroundStart">#EAF2FF</color>
+    <color name="screenBackgroundEnd">#F8FBFF</color>
+    <color name="cardBackground">#FFFFFFFF</color>
+    <color name="labelMuted">#5C6F86</color>
 </resources>
