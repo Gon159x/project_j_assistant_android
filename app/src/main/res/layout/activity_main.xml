@@ -124,6 +124,26 @@
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="@dimen/spacer_m"
                     android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvUpdateProgress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacer_s"
+                    android:textColor="@color/labelMuted"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:text="Descargando actualización: 47% (12 MB / 25 MB)" />
+
+                <ProgressBar
+                    android:id="@+id/progressBarUpdate"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacer_s"
+                    android:indeterminate="true"
+                    android:max="100"
+                    android:visibility="gone" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

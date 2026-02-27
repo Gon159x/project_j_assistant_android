@@ -8,10 +8,13 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
+import android.text.format.Formatter
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -40,15 +43,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recognizedTextView: TextView
     private lateinit var responseTextView: TextView
     private lateinit var loadingView: ProgressBar
+    private lateinit var updateProgressView: ProgressBar
+    private lateinit var updateProgressTextView: TextView
 
     private lateinit var apiClient: ApiClient
     private lateinit var speechHandler: SpeechHandler
     private lateinit var ttsHandler: TtsHandler
     private lateinit var networkExecutor: ExecutorService
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private lateinit var downloadManager: DownloadManager
     private var currentDownloadId: Long? = null
     private var currentDownloadedFileName: String? = null
+    private var downloadProgressRunnable: Runnable? = null
     private var isTtsReady: Boolean = false
 
     private val downloadReceiver = object : BroadcastReceiver() {
@@ -85,6 +92,8 @@ class MainActivity : AppCompatActivity() {
         recognizedTextView = findViewById(R.id.tvRecognizedText)
         responseTextView = findViewById(R.id.tvResponseText)
         loadingView = findViewById(R.id.progressBar)
+        updateProgressView = findViewById(R.id.progressBarUpdate)
+        updateProgressTextView = findViewById(R.id.tvUpdateProgress)
 
         apiClient = ApiClient(applicationContext)
         speechHandler = SpeechHandler(this)
@@ -205,35 +214,144 @@ class MainActivity : AppCompatActivity() {
             .setAllowedOverMetered(true)
             .setAllowedOverRoaming(true)
 
-        currentDownloadId = downloadManager.enqueue(request)
+        val downloadId = downloadManager.enqueue(request)
+        currentDownloadId = downloadId
+        checkUpdateButton.isEnabled = false
+        startDownloadProgressTracking(downloadId)
         showInfo(getString(R.string.update_available, update.versionName, update.versionCode))
         Toast.makeText(this, getString(R.string.update_download_started), Toast.LENGTH_SHORT).show()
     }
 
+    private fun startDownloadProgressTracking(downloadId: Long) {
+        stopDownloadProgressTracking()
+        updateProgressTextView.text = getString(R.string.update_download_progress_pending)
+        updateProgressTextView.visibility = View.VISIBLE
+        updateProgressView.visibility = View.VISIBLE
+        updateProgressView.isIndeterminate = true
+        updateProgressView.progress = 0
+
+        val runnable = object : Runnable {
+            override fun run() {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                downloadManager.query(query)?.use { cursor ->
+                    if (!cursor.moveToFirst()) {
+                        showError(getString(R.string.update_download_failed))
+                        stopDownloadProgressTracking()
+                        return
+                    }
+                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    when (status) {
+                        DownloadManager.STATUS_PENDING -> {
+                            updateProgressView.isIndeterminate = true
+                            updateProgressTextView.text = getString(R.string.update_download_progress_pending)
+                        }
+
+                        DownloadManager.STATUS_PAUSED -> {
+                            updateProgressView.isIndeterminate = true
+                            updateProgressTextView.text = getString(R.string.update_download_paused)
+                        }
+
+                        DownloadManager.STATUS_RUNNING -> {
+                            val downloadedBytes = cursor.getLong(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                            )
+                            val totalBytes = cursor.getLong(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                            )
+                            val progress = if (totalBytes > 0) {
+                                ((downloadedBytes * 100L) / totalBytes).toInt().coerceIn(0, 100)
+                            } else {
+                                0
+                            }
+                            if (totalBytes > 0) {
+                                updateProgressView.isIndeterminate = false
+                                updateProgressView.progress = progress
+                                updateProgressTextView.text = getString(
+                                    R.string.update_download_progress_with_size,
+                                    progress,
+                                    Formatter.formatShortFileSize(this@MainActivity, downloadedBytes),
+                                    Formatter.formatShortFileSize(this@MainActivity, totalBytes)
+                                )
+                            } else {
+                                updateProgressView.isIndeterminate = true
+                                updateProgressTextView.text = getString(
+                                    R.string.update_download_progress_percent,
+                                    progress
+                                )
+                            }
+                        }
+
+                        DownloadManager.STATUS_SUCCESSFUL -> {
+                            updateProgressView.isIndeterminate = false
+                            updateProgressView.progress = 100
+                            updateProgressTextView.text = getString(R.string.update_download_completed)
+                            return
+                        }
+
+                        DownloadManager.STATUS_FAILED -> {
+                            showError(getString(R.string.update_download_failed))
+                            stopDownloadProgressTracking()
+                            return
+                        }
+                    }
+                } ?: run {
+                    showError(getString(R.string.update_download_failed))
+                    stopDownloadProgressTracking()
+                    return
+                }
+
+                mainHandler.postDelayed(this, 500L)
+            }
+        }
+
+        downloadProgressRunnable = runnable
+        mainHandler.post(runnable)
+    }
+
+    private fun stopDownloadProgressTracking(clearUi: Boolean = true) {
+        downloadProgressRunnable?.let { mainHandler.removeCallbacks(it) }
+        downloadProgressRunnable = null
+        if (clearUi) {
+            updateProgressView.visibility = View.GONE
+            updateProgressView.isIndeterminate = true
+            updateProgressView.progress = 0
+            updateProgressTextView.visibility = View.GONE
+            updateProgressTextView.text = ""
+            currentDownloadId = null
+            checkUpdateButton.isEnabled = true
+        }
+    }
+
     private fun handleDownloadedApk(downloadId: Long) {
+        stopDownloadProgressTracking(clearUi = false)
         val query = DownloadManager.Query().setFilterById(downloadId)
         downloadManager.query(query)?.use { cursor ->
             if (!cursor.moveToFirst()) {
                 showError(getString(R.string.update_download_failed))
+                stopDownloadProgressTracking()
                 return
             }
             val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
             if (status != DownloadManager.STATUS_SUCCESSFUL) {
                 showError(getString(R.string.update_download_failed))
+                stopDownloadProgressTracking()
                 return
             }
         }
 
         val fileName = currentDownloadedFileName ?: run {
             showError(getString(R.string.update_download_failed))
+            stopDownloadProgressTracking()
             return
         }
         val apkFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
         if (!apkFile.exists()) {
             showError(getString(R.string.update_download_failed))
+            stopDownloadProgressTracking()
             return
         }
         installApk(apkFile)
+        stopDownloadProgressTracking()
     }
 
     private fun installApk(apkFile: File) {
@@ -287,6 +405,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         // Important cleanup for SpeechRecognizer and TTS lifecycle resources.
+        stopDownloadProgressTracking()
         unregisterReceiver(downloadReceiver)
         speechHandler.shutdown()
         ttsHandler.shutdown()

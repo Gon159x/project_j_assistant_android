@@ -16,6 +16,11 @@
     <string name="update_install_failed">No se pudo iniciar la instalación del APK.</string>
     <string name="update_unknown_sources_required">Permite instalar apps desconocidas para continuar la actualización.</string>
     <string name="update_download_description">Descarga OTA de Assistant Android</string>
+    <string name="update_download_progress_pending">Preparando descarga de actualización...</string>
+    <string name="update_download_progress_percent">Descargando actualización: %1$d%%</string>
+    <string name="update_download_progress_with_size">Descargando actualización: %1$d%% (%2$s / %3$s)</string>
+    <string name="update_download_paused">Descarga pausada. Reintentando...</string>
+    <string name="update_download_completed">Descarga completada. Preparando instalación...</string>
     <string name="recognized_label">Texto reconocido:</string>
     <string name="response_label">Respuesta del servidor:</string>
     <string name="waiting_speech">Esperando audio...</string>
