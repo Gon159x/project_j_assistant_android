@@ -80,6 +80,15 @@
                     android:text="@string/speak_button"
                     app:cornerRadius="14dp" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnHolaMundo"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacer_s"
+                    android:text="@string/hola_mundo_button"
+                    app:cornerRadius="14dp" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
