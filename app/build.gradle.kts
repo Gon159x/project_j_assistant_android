@@ -22,8 +22,8 @@ android {
         applicationId = "com.proyectoj.assistant"
         minSdk = 24
         targetSdk = 34
-        versionCode = 29
-        versionName = "1.0.2"
+        versionCode = 32
+        versionName = "1.0.4"
         buildConfigField("String", "CLOUDFLARE_PUBLIC_BASE_URL", "\"$cloudflarePublicBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
