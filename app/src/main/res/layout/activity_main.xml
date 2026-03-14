@@ -127,6 +127,15 @@
                         app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnChauMundo"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/chau_mundo_button"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckUpdate"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
