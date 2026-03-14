@@ -53,7 +53,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
-    private lateinit var bienvenidoButton: MaterialButton
     private lateinit var chauMundoButton: MaterialButton
     private lateinit var checkUpdateButton: Button
     private lateinit var messageInput: EditText
@@ -144,7 +143,6 @@ class MainActivity : AppCompatActivity() {
 
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
-        bienvenidoButton = findViewById(R.id.btnBienvenido)
         chauMundoButton = findViewById(R.id.btnChauMundo)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         messageInput = findViewById(R.id.etMessageInput)
@@ -217,10 +215,6 @@ class MainActivity : AppCompatActivity() {
 
         sendTextButton.setOnClickListener {
             submitTypedMessage()
-        }
-
-        bienvenidoButton.setOnClickListener {
-            showInfo(getString(R.string.bienvenido_message))
         }
 
         chauMundoButton.setOnClickListener {
@@ -1013,7 +1007,6 @@ class MainActivity : AppCompatActivity() {
         loadingView.visibility = if (loading) View.VISIBLE else View.GONE
         speakButton.isEnabled = !loading
         sendTextButton.isEnabled = !loading
-        bienvenidoButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
         messageInput.isEnabled = !loading
     }

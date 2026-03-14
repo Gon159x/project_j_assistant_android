@@ -7,8 +7,6 @@
     <string name="speak_button">Hablar</string>
     <string name="message_hint">Escribe tu mensaje</string>
     <string name="send_text_button">Enviar texto</string>
-    <string name="bienvenido_button">Bienvenido</string>
-    <string name="bienvenido_message">Bienvenido</string>
     <string name="chau_mundo_button">chau mundo</string>
     <string name="check_update_button">Revisar actualización</string>
     <string name="update_checking">Revisando actualización...</string>
