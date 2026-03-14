@@ -43,6 +43,7 @@ import com.proyectoj.assistant.speech.SpeechHandler
 import com.proyectoj.assistant.speech.TtsHandler
 import java.io.File
 import java.util.ArrayDeque
+import java.util.Calendar
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -56,6 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sendTextButton: Button
     private lateinit var checkUpdateButton: Button
     private lateinit var helloWorldButton: MaterialButton
+    private lateinit var vamosArgentinaButton: MaterialButton
     private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
     private lateinit var responseTextView: TextView
@@ -146,6 +148,7 @@ class MainActivity : AppCompatActivity() {
         sendTextButton = findViewById(R.id.btnSendText)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         helloWorldButton = findViewById(R.id.btnHelloWorld)
+        vamosArgentinaButton = findViewById(R.id.btnVamosArgentina)
         messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
         responseTextView = findViewById(R.id.tvResponseText)
@@ -201,6 +204,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupTabs()
+        updateVamosArgentinaButtonVisibility()
 
         speakButton.setOnClickListener {
             if (hasAudioPermission()) {
@@ -218,6 +222,10 @@ class MainActivity : AppCompatActivity() {
             showInfo(getString(R.string.hello_world_message))
         }
 
+        vamosArgentinaButton.setOnClickListener {
+            showInfo(getString(R.string.vamos_argentina_message))
+        }
+
         sendTextButton.setOnClickListener {
             submitTypedMessage()
         }
@@ -232,6 +240,11 @@ class MainActivity : AppCompatActivity() {
         rollbackConfirmButton.setOnClickListener {
             confirmRollback()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateVamosArgentinaButtonVisibility()
     }
 
     private fun setupTabs() {
@@ -913,7 +926,14 @@ class MainActivity : AppCompatActivity() {
         sendTextButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
         helloWorldButton.isEnabled = !loading
+        vamosArgentinaButton.isEnabled = !loading
         messageInput.isEnabled = !loading
+    }
+
+    private fun updateVamosArgentinaButtonVisibility() {
+        val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val isAfternoon = currentHour in AFTERNOON_START_HOUR until EVENING_START_HOUR
+        vamosArgentinaButton.visibility = if (isAfternoon) View.VISIBLE else View.GONE
     }
 
     private fun showError(message: String) {
@@ -942,5 +962,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val BUILD_POLL_INTERVAL_MS = 2_000L
         private const val MAX_VISIBLE_BUILD_LOG_LINES = 80
+        private const val AFTERNOON_START_HOUR = 12
+        private const val EVENING_START_HOUR = 20
     }
 }
