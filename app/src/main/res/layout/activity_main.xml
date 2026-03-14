@@ -354,5 +354,149 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rollbackTabContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/spacer_m"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_l"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rollback_title"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackStatus"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/rollback_loading"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackReason"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        tools:text="Detalle: Puedes revertir solo el ultimo pedido exitoso." />
+
+                    <ProgressBar
+                        android:id="@+id/progressBarRollback"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRefreshRollback"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_m"
+                        android:text="@string/rollback_refresh"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRollbackConfirm"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/rollback_confirm"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/cardBackground"
+                app:cardCornerRadius="@dimen/corner_radius_m"
+                app:cardElevation="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacer_m">
+
+                    <TextView
+                        android:id="@+id/tvRollbackLastRequestTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/rollback_last_request_none"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackLastRequestTime"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackLastRequestRepos"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackWarning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/rollback_warning_side_effects"
+                        android:textColor="@color/labelMuted"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvRollbackResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_m"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="14sp"
+                        tools:text="Resultado: Rollback completed successfully." />
+
+                    <TextView
+                        android:id="@+id/tvRollbackRepoDetails"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:textColor="@color/colorOnSurface"
+                        android:textSize="13sp"
+                        tools:text="assistant-server [completed]: git revert completed" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

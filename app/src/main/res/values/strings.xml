@@ -28,6 +28,7 @@
     <string name="empty_message_error">Escribe un mensaje antes de enviar.</string>
     <string name="tab_assistant">Asistente</string>
     <string name="tab_codex_logs">Codex Logs</string>
+    <string name="tab_revert">Revertir</string>
     <string name="codex_logs_title">Monitor de builds Codex</string>
     <string name="codex_logs_waiting">Esperando logs...</string>
     <string name="codex_logs_refresh">Actualizar logs</string>
@@ -40,4 +41,22 @@
     <string name="codex_logs_tracking_status">Siguiendo %1$s [%2$s]</string>
     <string name="codex_logs_summary_empty">Sin eventos recientes.</string>
     <string name="codex_logs_summary_format">Eventos: %1$d   Error: %2$d   Warn: %3$d   OK: %4$d</string>
+    <string name="rollback_title">Revertir ultimo pedido</string>
+    <string name="rollback_refresh">Actualizar estado</string>
+    <string name="rollback_confirm">Revertir ultimo pedido</string>
+    <string name="rollback_empty">No hay nada para revertir.</string>
+    <string name="rollback_loading">Cargando estado de rollback...</string>
+    <string name="rollback_status_prefix">Estado: %1$s</string>
+    <string name="rollback_last_request_title">Ultimo pedido</string>
+    <string name="rollback_last_request_none">No hay ultimo pedido disponible.</string>
+    <string name="rollback_last_request_time">Ultima actualizacion: %1$s</string>
+    <string name="rollback_last_request_repos">Repos afectados: %1$s</string>
+    <string name="rollback_warning_side_effects">Advertencia: este pedido tuvo efectos externos que no se deshacen automaticamente.</string>
+    <string name="rollback_reason_prefix">Detalle: %1$s</string>
+    <string name="rollback_confirmation_message">Esto revertira unicamente el ultimo pedido exitoso y solo si sigue siendo el cambio mas reciente en los repos afectados.</string>
+    <string name="rollback_running">Rollback en progreso...</string>
+    <string name="rollback_result_prefix">Resultado: %1$s</string>
+    <string name="rollback_repo_line">%1$s [%2$s]: %3$s</string>
+    <string name="rollback_validation_line">%1$s [%2$s]</string>
+    <string name="rollback_error_generic">No se pudo completar el rollback.</string>
 </resources>

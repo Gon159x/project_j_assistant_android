@@ -16,6 +16,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.format.Formatter
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -32,6 +33,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.tabs.TabLayout
 import com.proyectoj.assistant.network.ApiClient
 import com.proyectoj.assistant.network.BuildSummary
+import com.proyectoj.assistant.network.LatestRollbackInfo
+import com.proyectoj.assistant.network.RollbackStatus
 import com.proyectoj.assistant.network.UpdateAction
 import com.proyectoj.assistant.network.UpdateInfo
 import com.proyectoj.assistant.network.UpdateInfoParser
@@ -46,6 +49,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tabLayoutMain: TabLayout
     private lateinit var assistantTabContent: LinearLayout
     private lateinit var logsTabContent: LinearLayout
+    private lateinit var rollbackTabContent: LinearLayout
 
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
@@ -66,6 +70,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buildLogsProgressView: ProgressBar
     private lateinit var refreshBuildLogsButton: MaterialButton
     private lateinit var activeBuildsAdapter: ArrayAdapter<String>
+    private lateinit var rollbackStatusView: TextView
+    private lateinit var rollbackReasonView: TextView
+    private lateinit var rollbackLastRequestTitleView: TextView
+    private lateinit var rollbackLastRequestTimeView: TextView
+    private lateinit var rollbackLastRequestReposView: TextView
+    private lateinit var rollbackWarningView: TextView
+    private lateinit var rollbackResultView: TextView
+    private lateinit var rollbackRepoDetailsView: TextView
+    private lateinit var rollbackProgressView: ProgressBar
+    private lateinit var refreshRollbackButton: MaterialButton
+    private lateinit var rollbackConfirmButton: MaterialButton
 
     private lateinit var apiClient: ApiClient
     private lateinit var speechHandler: SpeechHandler
@@ -87,6 +102,11 @@ class MainActivity : AppCompatActivity() {
     private var latestActiveBuilds: List<BuildSummary> = emptyList()
     private var buildLogsNextSeq: Int = 0
     private val buildLogBuffer: ArrayDeque<String> = ArrayDeque()
+    private var rollbackPollingEnabled: Boolean = false
+    private var rollbackPollingInFlight: Boolean = false
+    private var rollbackPollingRunnable: Runnable? = null
+    private var latestRollbackInfo: LatestRollbackInfo? = null
+    private var latestRollbackStatus: RollbackStatus? = null
 
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -118,6 +138,7 @@ class MainActivity : AppCompatActivity() {
         tabLayoutMain = findViewById(R.id.tabLayoutMain)
         assistantTabContent = findViewById(R.id.assistantTabContent)
         logsTabContent = findViewById(R.id.logsTabContent)
+        rollbackTabContent = findViewById(R.id.rollbackTabContent)
 
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
@@ -137,6 +158,17 @@ class MainActivity : AppCompatActivity() {
         buildLogsView = findViewById(R.id.tvBuildLogs)
         buildLogsProgressView = findViewById(R.id.progressBarBuildLogs)
         refreshBuildLogsButton = findViewById(R.id.btnRefreshBuildLogs)
+        rollbackStatusView = findViewById(R.id.tvRollbackStatus)
+        rollbackReasonView = findViewById(R.id.tvRollbackReason)
+        rollbackLastRequestTitleView = findViewById(R.id.tvRollbackLastRequestTitle)
+        rollbackLastRequestTimeView = findViewById(R.id.tvRollbackLastRequestTime)
+        rollbackLastRequestReposView = findViewById(R.id.tvRollbackLastRequestRepos)
+        rollbackWarningView = findViewById(R.id.tvRollbackWarning)
+        rollbackResultView = findViewById(R.id.tvRollbackResult)
+        rollbackRepoDetailsView = findViewById(R.id.tvRollbackRepoDetails)
+        rollbackProgressView = findViewById(R.id.progressBarRollback)
+        refreshRollbackButton = findViewById(R.id.btnRefreshRollback)
+        rollbackConfirmButton = findViewById(R.id.btnRollbackConfirm)
         activeBuildsAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
         activeBuildsListView.adapter = activeBuildsAdapter
         activeBuildsListView.setOnItemClickListener { _, _, position, _ ->
@@ -187,12 +219,19 @@ class MainActivity : AppCompatActivity() {
             resetBuildLogsState()
             triggerBuildPollNow()
         }
+        refreshRollbackButton.setOnClickListener {
+            triggerRollbackPollNow()
+        }
+        rollbackConfirmButton.setOnClickListener {
+            confirmRollback()
+        }
     }
 
     private fun setupTabs() {
         tabLayoutMain.removeAllTabs()
         tabLayoutMain.addTab(tabLayoutMain.newTab().setText(getString(R.string.tab_assistant)))
         tabLayoutMain.addTab(tabLayoutMain.newTab().setText(getString(R.string.tab_codex_logs)))
+        tabLayoutMain.addTab(tabLayoutMain.newTab().setText(getString(R.string.tab_revert)))
         tabLayoutMain.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 selectMainTab(tab.position)
@@ -203,6 +242,8 @@ class MainActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab) {
                 if (tab.position == 1) {
                     triggerBuildPollNow()
+                } else if (tab.position == 2) {
+                    triggerRollbackPollNow()
                 }
             }
         })
@@ -211,12 +252,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectMainTab(position: Int) {
         val logsSelected = position == 1
-        assistantTabContent.visibility = if (logsSelected) View.GONE else View.VISIBLE
+        val rollbackSelected = position == 2
+        assistantTabContent.visibility = if (!logsSelected && !rollbackSelected) View.VISIBLE else View.GONE
         logsTabContent.visibility = if (logsSelected) View.VISIBLE else View.GONE
+        rollbackTabContent.visibility = if (rollbackSelected) View.VISIBLE else View.GONE
         if (logsSelected) {
             startBuildPolling()
+            stopRollbackPolling()
+        } else if (rollbackSelected) {
+            stopBuildPolling()
+            startRollbackPolling()
         } else {
             stopBuildPolling()
+            stopRollbackPolling()
         }
     }
 
@@ -416,6 +464,178 @@ class MainActivity : AppCompatActivity() {
             warnings,
             ok
         )
+    }
+
+    private fun startRollbackPolling() {
+        if (rollbackPollingEnabled) {
+            return
+        }
+        rollbackPollingEnabled = true
+        triggerRollbackPollNow()
+    }
+
+    private fun stopRollbackPolling() {
+        rollbackPollingEnabled = false
+        rollbackPollingRunnable?.let { mainHandler.removeCallbacks(it) }
+        rollbackPollingRunnable = null
+        rollbackPollingInFlight = false
+        setRollbackLoading(false)
+    }
+
+    private fun triggerRollbackPollNow() {
+        if (!rollbackPollingEnabled) {
+            return
+        }
+        rollbackPollingRunnable?.let { mainHandler.removeCallbacks(it) }
+        pollRollbackStateOnce()
+    }
+
+    private fun scheduleNextRollbackPoll() {
+        if (!rollbackPollingEnabled) {
+            return
+        }
+        val runnable = Runnable { pollRollbackStateOnce() }
+        rollbackPollingRunnable = runnable
+        mainHandler.postDelayed(runnable, BUILD_POLL_INTERVAL_MS)
+    }
+
+    private fun pollRollbackStateOnce() {
+        if (!rollbackPollingEnabled || rollbackPollingInFlight) {
+            scheduleNextRollbackPoll()
+            return
+        }
+        rollbackPollingInFlight = true
+        setRollbackLoading(true)
+        buildMonitorExecutor.execute {
+            var info: LatestRollbackInfo? = null
+            var rollbackStatus: RollbackStatus? = null
+            var errorText: String? = null
+            apiClient.fetchLatestRollbackInfo()
+                .onSuccess { value ->
+                    info = value
+                    val activeRollback = value.rollback
+                    if (activeRollback != null && activeRollback.status == "reverting") {
+                        apiClient.fetchRollbackStatus(activeRollback.rollbackId)
+                            .onSuccess { status -> rollbackStatus = status }
+                            .onFailure { error ->
+                                errorText = error.message ?: getString(R.string.rollback_error_generic)
+                            }
+                    } else {
+                        rollbackStatus = activeRollback
+                    }
+                }
+                .onFailure { error ->
+                    errorText = error.message ?: getString(R.string.rollback_error_generic)
+                }
+            runOnUiThread {
+                rollbackPollingInFlight = false
+                setRollbackLoading(false)
+                if (!rollbackPollingEnabled) {
+                    return@runOnUiThread
+                }
+                if (errorText != null) {
+                    rollbackStatusView.text = getString(R.string.rollback_error_generic)
+                    rollbackReasonView.text = getString(R.string.rollback_reason_prefix, errorText ?: "")
+                    scheduleNextRollbackPoll()
+                    return@runOnUiThread
+                }
+                latestRollbackInfo = info
+                latestRollbackStatus = rollbackStatus
+                renderRollbackInfo(info, rollbackStatus)
+                if (rollbackStatus?.status == "reverting") {
+                    scheduleNextRollbackPoll()
+                }
+            }
+        }
+    }
+
+    private fun renderRollbackInfo(info: LatestRollbackInfo?, rollbackStatus: RollbackStatus?) {
+        if (info == null || info.job == null) {
+            rollbackStatusView.text = getString(R.string.rollback_empty)
+            rollbackReasonView.text = ""
+            rollbackLastRequestTitleView.text = getString(R.string.rollback_last_request_none)
+            rollbackLastRequestTimeView.text = ""
+            rollbackLastRequestReposView.text = ""
+            rollbackWarningView.visibility = View.GONE
+            rollbackResultView.text = ""
+            rollbackRepoDetailsView.text = ""
+            rollbackConfirmButton.isEnabled = false
+            refreshRollbackButton.isEnabled = true
+            return
+        }
+        val job = info.job
+        rollbackStatusView.text = getString(
+            R.string.rollback_status_prefix,
+            rollbackStatus?.status ?: info.availabilityStatus
+        )
+        rollbackReasonView.text = getString(
+            R.string.rollback_reason_prefix,
+            if (rollbackStatus != null) rollbackStatus.message else info.reason
+        )
+        rollbackLastRequestTitleView.text = "${getString(R.string.rollback_last_request_title)}: ${job.title}"
+        rollbackLastRequestTimeView.text = getString(R.string.rollback_last_request_time, job.updatedAt)
+        rollbackLastRequestReposView.text = getString(
+            R.string.rollback_last_request_repos,
+            if (job.repos.isEmpty()) "-" else job.repos.joinToString(", ")
+        )
+        rollbackWarningView.visibility = if (job.externalSideEffects.isEmpty()) View.GONE else View.VISIBLE
+        rollbackResultView.text = if (rollbackStatus == null) {
+            getString(R.string.rollback_result_prefix, info.reason)
+        } else {
+            getString(R.string.rollback_result_prefix, rollbackStatus.message)
+        }
+        val repoLines = mutableListOf<String>()
+        rollbackStatus?.repos?.forEach { repo ->
+            repoLines.add(getString(R.string.rollback_repo_line, repo.repoName, repo.status, repo.message))
+        }
+        rollbackStatus?.validation?.forEach { validation ->
+            repoLines.add(getString(R.string.rollback_validation_line, validation.scope, validation.status))
+        }
+        rollbackRepoDetailsView.text = repoLines.joinToString("\n")
+        rollbackConfirmButton.isEnabled = info.canRevert && rollbackStatus?.status != "reverting"
+        refreshRollbackButton.isEnabled = rollbackStatus?.status != "reverting"
+    }
+
+    private fun confirmRollback() {
+        val info = latestRollbackInfo ?: return
+        val job = info.job ?: return
+        if (!info.canRevert) {
+            showError(info.reason)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.rollback_confirm))
+            .setMessage(getString(R.string.rollback_confirmation_message))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.rollback_confirm) { _, _ ->
+                startRollback(job.branch, job.updatedAt)
+            }
+            .show()
+    }
+
+    private fun startRollback(branch: String, updatedAt: String) {
+        setRollbackLoading(true)
+        buildMonitorExecutor.execute {
+            val result = apiClient.startLatestRollback(branch, updatedAt)
+            runOnUiThread {
+                setRollbackLoading(false)
+                result.onSuccess { status ->
+                    latestRollbackStatus = status
+                    rollbackStatusView.text = getString(R.string.rollback_running)
+                    rollbackReasonView.text = getString(R.string.rollback_reason_prefix, status.message)
+                    triggerRollbackPollNow()
+                }.onFailure { error ->
+                    showError(error.message ?: getString(R.string.rollback_error_generic))
+                    triggerRollbackPollNow()
+                }
+            }
+        }
+    }
+
+    private fun setRollbackLoading(loading: Boolean) {
+        rollbackProgressView.visibility = if (loading) View.VISIBLE else View.GONE
+        refreshRollbackButton.isEnabled = !loading
+        rollbackConfirmButton.isEnabled = !loading && (latestRollbackInfo?.canRevert == true)
     }
 
     private fun formatBuildLogLine(rawLine: String): String? {
@@ -799,6 +1019,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         // Important cleanup for SpeechRecognizer and TTS lifecycle resources.
         stopBuildPolling()
+        stopRollbackPolling()
         stopDownloadProgressTracking()
         unregisterReceiver(downloadReceiver)
         speechHandler.shutdown()

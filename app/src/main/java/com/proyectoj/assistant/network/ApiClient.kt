@@ -32,6 +32,51 @@ data class BuildLogsChunk(
     val logs: List<String>
 )
 
+data class RollbackRepo(
+    val repoName: String,
+    val status: String,
+    val message: String,
+    val externalSideEffects: List<String>
+)
+
+data class RollbackValidation(
+    val scope: String,
+    val command: String,
+    val status: String,
+    val message: String
+)
+
+data class RollbackStatus(
+    val rollbackId: String,
+    val targetJobBranch: String,
+    val status: String,
+    val message: String,
+    val updatedAt: String,
+    val finishedAt: String,
+    val repos: List<RollbackRepo>,
+    val validation: List<RollbackValidation>
+)
+
+data class LatestRollbackJob(
+    val branch: String,
+    val title: String,
+    val descriptionPreview: String,
+    val updatedAt: String,
+    val hasCommits: Boolean,
+    val rollbackEligible: Boolean,
+    val rollbackBlockReason: String,
+    val externalSideEffects: List<String>,
+    val repos: List<String>
+)
+
+data class LatestRollbackInfo(
+    val availabilityStatus: String,
+    val canRevert: Boolean,
+    val reason: String,
+    val job: LatestRollbackJob?,
+    val rollback: RollbackStatus?
+)
+
 class ApiClient(private val context: Context) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -56,6 +101,7 @@ class ApiClient(private val context: Context) {
         private const val HEALTH_PATH = "/health"
         private const val UPDATE_LATEST_PATH = "/mobile/update/latest"
         private const val ACTIVE_BUILDS_PATH = "/builds/active"
+        private const val ROLLBACK_LATEST_PATH = "/rollback/latest"
         private const val EMULATOR_BASE_URL = "http://10.0.2.2:8000"
         private const val FALLBACK_BASE_URL = "http://192.168.1.2:8000"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
@@ -184,6 +230,80 @@ class ApiClient(private val context: Context) {
             }
         } catch (ex: Exception) {
             Result.failure(IOException("Could not fetch build logs.", ex))
+        }
+    }
+
+    fun fetchLatestRollbackInfo(): Result<LatestRollbackInfo> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for rollback info."))
+        val request = Request.Builder()
+            .url("$baseUrl$ROLLBACK_LATEST_PATH")
+            .get()
+            .build()
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                }
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) {
+                    return Result.failure(IOException("Server returned an empty rollback response body."))
+                }
+                parseLatestRollbackInfo(body)
+            }
+        } catch (ex: Exception) {
+            Result.failure(IOException("Could not fetch rollback info.", ex))
+        }
+    }
+
+    fun startLatestRollback(expectedJobBranch: String, expectedUpdatedAt: String): Result<RollbackStatus> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for rollback trigger."))
+        val payload = JSONObject()
+            .put("expected_job_branch", expectedJobBranch)
+            .put("expected_updated_at", expectedUpdatedAt)
+            .toString()
+            .toRequestBody(JSON_MEDIA_TYPE)
+        val request = Request.Builder()
+            .url("$baseUrl$ROLLBACK_LATEST_PATH")
+            .post(payload)
+            .build()
+        return try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException(parseHttpError(response.code, response.message, body)))
+                }
+                if (body.isBlank()) {
+                    return Result.failure(IOException("Server returned an empty rollback start body."))
+                }
+                parseRollbackStatus(body)
+            }
+        } catch (ex: Exception) {
+            Result.failure(IOException("Could not start rollback.", ex))
+        }
+    }
+
+    fun fetchRollbackStatus(rollbackId: String): Result<RollbackStatus> {
+        val baseUrl = resolveBaseUrl()
+            ?: return Result.failure(IOException("Could not discover assistant server for rollback status."))
+        val request = Request.Builder()
+            .url("$baseUrl/rollback/${Uri.encode(rollbackId)}")
+            .get()
+            .build()
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return Result.failure(IOException("HTTP ${response.code}: ${response.message}"))
+                }
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) {
+                    return Result.failure(IOException("Server returned an empty rollback status body."))
+                }
+                parseRollbackStatus(body)
+            }
+        } catch (ex: Exception) {
+            Result.failure(IOException("Could not fetch rollback status.", ex))
         }
     }
 
@@ -383,6 +503,124 @@ class ApiClient(private val context: Context) {
             )
         } catch (ex: JSONException) {
             Result.failure(IOException("Invalid JSON format from build logs endpoint.", ex))
+        }
+    }
+
+    private fun parseLatestRollbackInfo(rawBody: String): Result<LatestRollbackInfo> {
+        return try {
+            val root = JSONObject(rawBody)
+            val jobObject = root.optJSONObject("job")
+            val rollbackObject = root.optJSONObject("rollback")
+            val job = jobObject?.let { item ->
+                val repos = mutableListOf<String>()
+                val repoArray = item.optJSONArray("repos")
+                val sideEffects = mutableListOf<String>()
+                val sideEffectsArray = item.optJSONArray("external_side_effects")
+                if (repoArray != null) {
+                    for (index in 0 until repoArray.length()) {
+                        val repo = repoArray.optJSONObject(index) ?: continue
+                        repos.add(repo.optString("repo_name", ""))
+                    }
+                }
+                if (sideEffectsArray != null) {
+                    for (index in 0 until sideEffectsArray.length()) {
+                        sideEffects.add(sideEffectsArray.optString(index, ""))
+                    }
+                }
+                LatestRollbackJob(
+                    branch = item.optString("branch", ""),
+                    title = item.optString("title", ""),
+                    descriptionPreview = item.optString("description_preview", ""),
+                    updatedAt = item.optString("completed_at", ""),
+                    hasCommits = item.optBoolean("has_commits", false),
+                    rollbackEligible = item.optBoolean("rollback_eligible", false),
+                    rollbackBlockReason = item.optString("rollback_block_reason", ""),
+                    externalSideEffects = sideEffects.filter { it.isNotBlank() },
+                    repos = repos.filter { it.isNotBlank() }
+                )
+            }
+            Result.success(
+                LatestRollbackInfo(
+                    availabilityStatus = root.optString("availability_status", ""),
+                    canRevert = root.optBoolean("can_revert", false),
+                    reason = root.optString("reason", ""),
+                    job = job,
+                    rollback = rollbackObject?.let { parseRollbackStatusObject(it) }
+                )
+            )
+        } catch (ex: JSONException) {
+            Result.failure(IOException("Invalid JSON format from rollback latest endpoint.", ex))
+        }
+    }
+
+    private fun parseRollbackStatus(rawBody: String): Result<RollbackStatus> {
+        return try {
+            Result.success(parseRollbackStatusObject(JSONObject(rawBody)))
+        } catch (ex: JSONException) {
+            Result.failure(IOException("Invalid JSON format from rollback status endpoint.", ex))
+        }
+    }
+
+    private fun parseRollbackStatusObject(root: JSONObject): RollbackStatus {
+        val repos = mutableListOf<RollbackRepo>()
+        val validations = mutableListOf<RollbackValidation>()
+        val reposArray = root.optJSONArray("repos")
+        val validationArray = root.optJSONArray("validation")
+        if (reposArray != null) {
+            for (index in 0 until reposArray.length()) {
+                val item = reposArray.optJSONObject(index) ?: continue
+                val sideEffects = mutableListOf<String>()
+                val sideEffectsArray = item.optJSONArray("external_side_effects")
+                if (sideEffectsArray != null) {
+                    for (sideIndex in 0 until sideEffectsArray.length()) {
+                        sideEffects.add(sideEffectsArray.optString(sideIndex, ""))
+                    }
+                }
+                repos.add(
+                    RollbackRepo(
+                        repoName = item.optString("repo_name", ""),
+                        status = item.optString("status", ""),
+                        message = item.optString("message", ""),
+                        externalSideEffects = sideEffects.filter { it.isNotBlank() }
+                    )
+                )
+            }
+        }
+        if (validationArray != null) {
+            for (index in 0 until validationArray.length()) {
+                val item = validationArray.optJSONObject(index) ?: continue
+                validations.add(
+                    RollbackValidation(
+                        scope = item.optString("scope", ""),
+                        command = item.optString("command", ""),
+                        status = item.optString("status", ""),
+                        message = item.optString("message", "")
+                    )
+                )
+            }
+        }
+        return RollbackStatus(
+            rollbackId = root.optString("rollback_id", ""),
+            targetJobBranch = root.optString("target_job_branch", ""),
+            status = root.optString("status", ""),
+            message = root.optString("message", ""),
+            updatedAt = root.optString("updated_at", ""),
+            finishedAt = root.optString("finished_at", ""),
+            repos = repos,
+            validation = validations
+        )
+    }
+
+    private fun parseHttpError(code: Int, message: String, body: String): String {
+        if (body.isBlank()) {
+            return "HTTP $code: $message"
+        }
+        return try {
+            val root = JSONObject(body)
+            val detail = root.optString("detail", "").ifBlank { root.optString("message", "") }
+            if (detail.isBlank()) "HTTP $code: $message" else detail
+        } catch (_: JSONException) {
+            "HTTP $code: $message"
         }
     }
 }
