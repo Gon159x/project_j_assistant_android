@@ -7,6 +7,10 @@
     <string name="speak_button">Hablar</string>
     <string name="message_hint">Escribe tu mensaje</string>
     <string name="send_text_button">Enviar texto</string>
+    <string name="hola_pa_button">hola pa</string>
+    <string name="hola_pa_message">hola pa</string>
+    <string name="argentina_button">Argentina</string>
+    <string name="argentina_message">Argentina</string>
     <string name="chau_mundo_button">chau mundo</string>
     <string name="check_update_button">Revisar actualización</string>
     <string name="update_checking">Revisando actualización...</string>
