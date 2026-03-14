@@ -135,6 +135,15 @@
                         android:text="@string/check_update_button"
                         app:cornerRadius="14dp" />
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnHelloWorld"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacer_s"
+                        android:text="@string/hello_world_button"
+                        app:cornerRadius="14dp" />
+
                     <ProgressBar
                         android:id="@+id/progressBar"
                         android:layout_width="wrap_content"
