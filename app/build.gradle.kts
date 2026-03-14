@@ -22,7 +22,7 @@ android {
         applicationId = "com.proyectoj.assistant"
         minSdk = 24
         targetSdk = 34
-        versionCode = 11
+        versionCode = 9
         versionName = "1.0"
         buildConfigField("String", "CLOUDFLARE_PUBLIC_BASE_URL", "\"$cloudflarePublicBaseUrl\"")
 
