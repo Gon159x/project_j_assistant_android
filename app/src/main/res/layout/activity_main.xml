@@ -136,15 +136,6 @@
                         app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnVenezuela"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacer_s"
-                        android:text="@string/venezuela_button"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckUpdate"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
