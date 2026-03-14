@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
     private lateinit var checkUpdateButton: Button
+    private lateinit var helloWorldButton: MaterialButton
     private lateinit var vamosArgentinaButton: MaterialButton
     private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
@@ -146,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
+        helloWorldButton = findViewById(R.id.btnHelloWorld)
         vamosArgentinaButton = findViewById(R.id.btnVamosArgentina)
         messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
@@ -214,6 +216,10 @@ class MainActivity : AppCompatActivity() {
 
         checkUpdateButton.setOnClickListener {
             checkForUpdates()
+        }
+
+        helloWorldButton.setOnClickListener {
+            showInfo(getString(R.string.hello_world_message))
         }
 
         vamosArgentinaButton.setOnClickListener {
@@ -919,6 +925,7 @@ class MainActivity : AppCompatActivity() {
         speakButton.isEnabled = !loading
         sendTextButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
+        helloWorldButton.isEnabled = !loading
         vamosArgentinaButton.isEnabled = !loading
         messageInput.isEnabled = !loading
     }
