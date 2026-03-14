@@ -136,24 +136,6 @@
                         app:cornerRadius="14dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnHolaPa"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacer_s"
-                        android:text="@string/hola_pa_button"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnArgentina"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacer_s"
-                        android:text="@string/argentina_button"
-                        app:cornerRadius="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCheckUpdate"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"

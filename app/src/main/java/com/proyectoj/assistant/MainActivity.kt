@@ -54,8 +54,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
     private lateinit var chauMundoButton: MaterialButton
-    private lateinit var holaPaButton: MaterialButton
-    private lateinit var argentinaButton: MaterialButton
     private lateinit var checkUpdateButton: Button
     private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
@@ -146,8 +144,6 @@ class MainActivity : AppCompatActivity() {
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
         chauMundoButton = findViewById(R.id.btnChauMundo)
-        holaPaButton = findViewById(R.id.btnHolaPa)
-        argentinaButton = findViewById(R.id.btnArgentina)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
@@ -223,14 +219,6 @@ class MainActivity : AppCompatActivity() {
 
         chauMundoButton.setOnClickListener {
             showInfo(getString(R.string.chau_mundo_button))
-        }
-
-        holaPaButton.setOnClickListener {
-            showInfo(getString(R.string.hola_pa_message))
-        }
-
-        argentinaButton.setOnClickListener {
-            showInfo(getString(R.string.argentina_message))
         }
 
         refreshBuildLogsButton.setOnClickListener {
@@ -1019,9 +1007,6 @@ class MainActivity : AppCompatActivity() {
         loadingView.visibility = if (loading) View.VISIBLE else View.GONE
         speakButton.isEnabled = !loading
         sendTextButton.isEnabled = !loading
-        chauMundoButton.isEnabled = !loading
-        holaPaButton.isEnabled = !loading
-        argentinaButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
         messageInput.isEnabled = !loading
     }
