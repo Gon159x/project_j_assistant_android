@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
     private lateinit var chauMundoButton: MaterialButton
+    private lateinit var venezuelaButton: MaterialButton
     private lateinit var checkUpdateButton: Button
     private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
@@ -144,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
         chauMundoButton = findViewById(R.id.btnChauMundo)
+        venezuelaButton = findViewById(R.id.btnVenezuela)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
@@ -219,6 +221,10 @@ class MainActivity : AppCompatActivity() {
 
         chauMundoButton.setOnClickListener {
             showInfo(getString(R.string.chau_mundo_button))
+        }
+
+        venezuelaButton.setOnClickListener {
+            showInfo(getString(R.string.venezuela_button))
         }
 
         refreshBuildLogsButton.setOnClickListener {
@@ -1007,6 +1013,7 @@ class MainActivity : AppCompatActivity() {
         loadingView.visibility = if (loading) View.VISIBLE else View.GONE
         speakButton.isEnabled = !loading
         sendTextButton.isEnabled = !loading
+        venezuelaButton.isEnabled = !loading
         checkUpdateButton.isEnabled = !loading
         messageInput.isEnabled = !loading
     }
