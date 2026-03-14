@@ -53,7 +53,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var speakButton: Button
     private lateinit var sendTextButton: Button
-    private lateinit var chauMundoButton: MaterialButton
     private lateinit var checkUpdateButton: Button
     private lateinit var messageInput: EditText
     private lateinit var recognizedTextView: TextView
@@ -143,7 +142,6 @@ class MainActivity : AppCompatActivity() {
 
         speakButton = findViewById(R.id.btnSpeak)
         sendTextButton = findViewById(R.id.btnSendText)
-        chauMundoButton = findViewById(R.id.btnChauMundo)
         checkUpdateButton = findViewById(R.id.btnCheckUpdate)
         messageInput = findViewById(R.id.etMessageInput)
         recognizedTextView = findViewById(R.id.tvRecognizedText)
@@ -215,10 +213,6 @@ class MainActivity : AppCompatActivity() {
 
         sendTextButton.setOnClickListener {
             submitTypedMessage()
-        }
-
-        chauMundoButton.setOnClickListener {
-            showInfo(getString(R.string.chau_mundo_button))
         }
 
         refreshBuildLogsButton.setOnClickListener {
