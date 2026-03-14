@@ -44,6 +44,20 @@ internal object ServerDiscoverySupport {
     fun intToIpv4(ip: Int): String {
         return "${ip and 0xFF}.${ip shr 8 and 0xFF}.${ip shr 16 and 0xFF}.${ip shr 24 and 0xFF}"
     }
+
+    fun summarizeFailure(publicBaseUrl: String?, subnetPrefix: String?): String {
+        val hints = mutableListOf<String>()
+        if (!publicBaseUrl.isNullOrBlank()) {
+            hints.add("Public URL '$publicBaseUrl' did not respond")
+        }
+        if (!subnetPrefix.isNullOrBlank()) {
+            hints.add("LAN scan in $subnetPrefix.x did not find a healthy /health endpoint")
+        } else {
+            hints.add("Device has no Wi-Fi subnet available for LAN discovery")
+        }
+        hints.add("Verify that the phone is on the same Wi-Fi and that the server host allows inbound connections")
+        return hints.joinToString(separator = ". ", postfix = ".")
+    }
 }
 
 class ServerDiscovery(
@@ -53,13 +67,25 @@ class ServerDiscovery(
 ) {
     @Volatile
     private var resolvedBaseUrl: String? = null
+    @Volatile
+    private var lastDiscoveryFailureMessage: String? = null
 
     fun resolveBaseUrl(): String? {
         return resolvedBaseUrl ?: discoverServerBaseUrl()
     }
 
+    fun failureMessage(purpose: String): String {
+        val detail = lastDiscoveryFailureMessage?.takeIf { it.isNotBlank() }
+        return if (detail != null) {
+            "Could not discover assistant server for $purpose. $detail"
+        } else {
+            "Could not discover assistant server for $purpose."
+        }
+    }
+
     fun clearResolvedServer() {
         resolvedBaseUrl = null
+        lastDiscoveryFailureMessage = null
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .remove(PREF_KEY_BASE_URL)
@@ -76,11 +102,13 @@ class ServerDiscovery(
         val cached = getPersistedBaseUrl()
         if (!cached.isNullOrBlank() && isServerHealthy(cached, useFastClient = true)) {
             resolvedBaseUrl = cached
+            lastDiscoveryFailureMessage = null
             return cached
         }
 
+        val subnetPrefix = subnetPrefix()
         val directCandidates = ServerDiscoverySupport.buildDirectCandidates(
-            prefix = subnetPrefix(),
+            prefix = subnetPrefix,
             defaultPort = DEFAULT_PORT,
             emulatorBaseUrl = EMULATOR_BASE_URL,
             fallbackBaseUrl = FALLBACK_BASE_URL
@@ -98,7 +126,11 @@ class ServerDiscovery(
             return discoveredInSubnet
         }
 
-        Log.e(TAG, "Server discovery failed: no healthy /health endpoint found.")
+        lastDiscoveryFailureMessage = ServerDiscoverySupport.summarizeFailure(
+            publicBaseUrl = publicCandidate,
+            subnetPrefix = subnetPrefix
+        )
+        Log.e(TAG, "Server discovery failed: ${lastDiscoveryFailureMessage.orEmpty()}")
         return null
     }
 
@@ -175,6 +207,7 @@ class ServerDiscovery(
 
     private fun persistResolvedServer(baseUrl: String) {
         resolvedBaseUrl = baseUrl
+        lastDiscoveryFailureMessage = null
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(PREF_KEY_BASE_URL, baseUrl)

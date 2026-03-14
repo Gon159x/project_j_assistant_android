@@ -32,4 +32,25 @@ class ServerDiscoverySupportTest {
         assertEquals("http://192.168.1.2:8000", candidates[1])
         assertTrue(candidates.contains("http://192.168.1.200:8000"))
     }
+
+    @Test
+    fun summarizeFailure_mentionsPublicUrlAndSubnet() {
+        val summary = ServerDiscoverySupport.summarizeFailure(
+            publicBaseUrl = "https://assistant.example.com",
+            subnetPrefix = "192.168.1"
+        )
+
+        assertTrue(summary.contains("https://assistant.example.com"))
+        assertTrue(summary.contains("192.168.1.x"))
+    }
+
+    @Test
+    fun summarizeFailure_mentionsMissingWifiSubnet() {
+        val summary = ServerDiscoverySupport.summarizeFailure(
+            publicBaseUrl = null,
+            subnetPrefix = null
+        )
+
+        assertTrue(summary.contains("no Wi-Fi subnet", ignoreCase = true))
+    }
 }

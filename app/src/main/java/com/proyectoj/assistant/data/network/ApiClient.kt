@@ -45,7 +45,7 @@ class ApiClient(context: Context) {
 
     private fun postMessageInternal(message: String, allowRetryWithRediscovery: Boolean): Result<String> {
         val chatUrl = resolveBaseUrl()?.let { "$it$CHAT_PATH" }
-            ?: return Result.failure(IOException("Could not discover assistant server on local network."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("chat requests")))
 
         return try {
             val requestJson = JSONObject().put("message", message).toString()
@@ -85,7 +85,7 @@ class ApiClient(context: Context) {
 
     fun fetchLatestUpdateInfo(): Result<UpdateInfo> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for update checks."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("update checks")))
 
         val request = Request.Builder()
             .url("$baseUrl$UPDATE_LATEST_PATH")
@@ -110,7 +110,7 @@ class ApiClient(context: Context) {
 
     fun fetchActiveBuilds(): Result<List<BuildSummary>> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for build logs."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("build logs")))
         val request = Request.Builder()
             .url("$baseUrl$ACTIVE_BUILDS_PATH")
             .get()
@@ -134,7 +134,7 @@ class ApiClient(context: Context) {
 
     fun fetchBuildLogs(branch: String, fromSeq: Int): Result<BuildLogsChunk> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for build logs."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("build logs")))
         val encodedBranch = Uri.encode(branch)
         val request = Request.Builder()
             .url("$baseUrl/build/$encodedBranch/logs?from_seq=$fromSeq")
@@ -159,7 +159,7 @@ class ApiClient(context: Context) {
 
     fun fetchLatestRollbackInfo(): Result<LatestRollbackInfo> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for rollback info."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("rollback info")))
         val request = Request.Builder()
             .url("$baseUrl$ROLLBACK_LATEST_PATH")
             .get()
@@ -182,7 +182,7 @@ class ApiClient(context: Context) {
 
     fun startLatestRollback(expectedJobBranch: String, expectedUpdatedAt: String): Result<RollbackStatus> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for rollback trigger."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("rollback trigger")))
         val payload = JSONObject()
             .put("expected_job_branch", expectedJobBranch)
             .put("expected_updated_at", expectedUpdatedAt)
@@ -212,7 +212,7 @@ class ApiClient(context: Context) {
 
     fun fetchRollbackStatus(rollbackId: String): Result<RollbackStatus> {
         val baseUrl = resolveBaseUrl()
-            ?: return Result.failure(IOException("Could not discover assistant server for rollback status."))
+            ?: return Result.failure(IOException(serverDiscovery.failureMessage("rollback status")))
         val request = Request.Builder()
             .url("$baseUrl/rollback/${Uri.encode(rollbackId)}")
             .get()
